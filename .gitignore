@@ -7,3 +7,6 @@ release/
 .env.local
 .DS_Store
 Thumbs.db
+
+# 测试门临时文件
+.claude/results/

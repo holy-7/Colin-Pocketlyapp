@@ -13,8 +13,8 @@ description: >
 
 | 场景 | 做什么 |
 |:---|:---|
-| **首次初始化**（项目还没有 git） | git init → 配置 .gitignore → 首次 commit → 创建 GitHub 仓库 → push → 生成 COMMITS.md |
-| **日常提交**（项目已有 git） | 检查变更 → stage → commit（带规范信息）→ 更新 COMMITS.md → push |
+| **首次初始化**（项目还没有 git） | git init → 配置 .gitignore → 生成 COMMITS.md → 首次 commit（含 COMMITS.md）→ 创建 GitHub 仓库 → push |
+| **日常提交**（项目已有 git） | 检查变更 → 🛡️ 测试门 → 确认提交 → 更新 COMMITS.md → commit → push |
 
 ---
 
@@ -70,11 +70,17 @@ Thumbs.db
 
 用 Read 工具读取现有 `.gitignore`，缺什么补什么（用 Edit 工具追加缺失项）。
 
-### 第 3 步：首次 commit
+### 第 3 步：生成 COMMITS.md（在首次 commit 之前）
+
+创建 `COMMITS.md` 文件（完整格式见下方「COMMITS.md 规范」），写下第一条记录。
+
+> **顺序很重要**：首先生成 COMMITS.md，这样它会被第 4 步的 `git add .` 一起纳入首次 commit，避免产生额外的独立提交。
+
+### 第 4 步：首次 commit
 
 ```bash
 git add .
-git commit -m "chore: init project — Colin记账 初始提交"
+git commit -m "chore: init project — <项目名> 初始提交"
 ```
 
 **Commit message 规范**（遵循 Conventional Commits）：
@@ -89,11 +95,11 @@ git commit -m "chore: init project — Colin记账 初始提交"
 | `style:` | 样式 | `style: 调整首页布局间距` |
 | `test:` | 测试 | `test: 补充 transactionStore 单元测试` |
 
-### 第 4 步：创建 GitHub 仓库并推送
+### 第 5 步：创建 GitHub 仓库并推送
 
 > 优先使用 `gh` CLI 自动创建。如果 gh 不可用，引导用户手动创建。
 
-#### 4a. gh CLI 可用（自动模式）
+#### 5a. gh CLI 可用（自动模式）
 
 ```bash
 # 在 GitHub 上创建私有仓库（推荐）
@@ -110,7 +116,7 @@ gh repo create Colin记账 --public --source=. --remote=origin --push
 - "authentication" → 引导用户执行 `gh auth login`
 - 其他 → 输出完整错误信息，让用户确认
 
-#### 4b. gh CLI 不可用（手动模式）
+#### 5b. gh CLI 不可用（手动模式）
 
 向用户说明需要手动操作，同时自动完成本地部分：
 
@@ -124,10 +130,6 @@ git remote add origin <仓库地址>
 git branch -M main
 git push -u origin main
 ```
-
-### 第 5 步：生成 COMMITS.md
-
-首次初始化后，创建 `COMMITS.md` 文件（完整格式见下方「COMMITS.md 规范」）。
 
 ---
 
@@ -147,6 +149,49 @@ git diff --stat
 - 新增了哪些文件（untracked）
 - 删除了哪些文件（deleted）
 
+### 第 1.5 步：测试质量门（提交前必须通过）
+
+**在提交之前**，必须先通过测试质量门。调用 test-engineer agent 以 Gate Mode 执行全量测试。
+
+#### 调用方式
+
+使用 Agent 工具调用 `test-engineer` agent，prompt 中必须包含 `"质量门"` 关键词：
+
+```
+agent: test-engineer
+prompt: "质量门 — 在 git commit 前执行全量测试，生成通行证文件"
+```
+
+#### 质量门机制
+
+| 文件 | 用途 | 生成条件 |
+|:---|:---|:---|
+| `.claude/results/test-report.md` | 详细测试报告（含用例数、通过/失败数、耗时、失败明细） | 始终生成 |
+| `.claude/results/tester-result.txt` | 通行证（首行 `PASS` 或 `FAIL`） | Gate Mode 才生成 |
+
+#### 结果处理
+
+**PASS（所有测试通过）**：
+- 简短告知用户测试全部通过
+- 继续第 2 步确认提交
+
+**FAIL（有测试失败）**：
+- 用 Read 读取 `.claude/results/test-report.md`
+- 向用户展示失败明细（哪个文件、哪个用例、期望值 vs 实际值）
+- **暂停提交流程**，询问用户处理方式：
+  - A) 修复失败的测试或代码后重试
+  - B) 跳过测试门继续提交（不推荐，需要用户明确确认）
+- 如果用户选 B，在 commit message 中标注 `[skip tests]`
+
+**0 个测试文件**：
+- vitest 退出码为 0，视为 PASS
+- 提醒用户：「⚠️ 项目暂无测试文件，建议补充测试」
+- 允许继续提交
+
+> ⚠️ **防跳过机制**：即使 git-manager 忘记触发测试门，PreToolUse hook 会在 `git push` 时检测 `tester-result.txt` 是否存在，作为安全兜底。
+
+---
+
 ### 第 2 步：确认提交内容
 
 用 AskUserQuestion 向用户确认：
@@ -161,21 +206,25 @@ git diff --stat
 - 只改了文档 → `docs: <简短描述>`
 - 混合变更 → 选主要变更类型，描述概括全部
 
-### 第 3 步：执行提交
+### 第 3 步：更新 COMMITS.md（先更新，再提交）
+
+**在 commit 之前**，先用 Read 读取现有的 `COMMITS.md`，在表格末尾追加一条新记录（格式见下方「COMMITS.md 规范」），然后用 Edit 写入。
+
+> **为什么先更新再提交？** 这样 COMMITS.md 的变更会和业务代码一起进入同一个 commit，避免 COMMITS.md 自身产生额外的提交记录。
+
+### 第 4 步：执行提交（COMMITS.md 纳入同一个 commit）
 
 ```bash
-# 全部提交
+# 全部提交（含 COMMITS.md）
 git add .
 git commit -m "<用户确认的 commit message>"
 
-# 部分提交
-git add <file1> <file2>
+# 部分提交（仍要带上 COMMITS.md）
+git add <file1> <file2> COMMITS.md
 git commit -m "<用户确认的 commit message>"
 ```
 
-### 第 4 步：更新 COMMITS.md
-
-读取现有的 `COMMITS.md`，在文件末尾追加一条新记录。
+> 无论提交范围如何，**COMMITS.md 始终跟随本次 commit 一起走**。
 
 ### 第 5 步：推送到远程
 
@@ -240,10 +289,11 @@ git push
 1. **安全第一** — 推送前确认用户意图，特别是有 force push 风险时。默认永远不用 `--force`。
 2. **不推送敏感信息** — 提交前检查是否有 `.env`、密码、token 等被误加。如果 `.gitignore` 已配置好则自动安全。
 3. **commit 小而精** — 建议用户每次 commit 聚焦一个功能/修复，不要把一周的活揉成一个 commit。
-4. **有变更才提交** — 如果 `git status` 显示 working tree clean，不要创建空 commit。
+4. **有变更才提交** — 如果 `git status` 显示除了 COMMITS.md 外没有其他变更，不要创建空 commit。
 5. **push 前先 pull** — 如果有多人协作，push 前先 `git pull --rebase` 避免冲突。单人项目可跳过。
-6. **保持 COMMITS.md 同步** — 每次 commit 后必须更新 COMMITS.md，不能遗漏。
-7. **分支命名** — 默认使用 `main` 作为主分支。如果本地是 `master`，用 `git branch -M main` 改名。
+6. **COMMITS.md 跟随业务 commit** — 先更新 COMMITS.md，再和业务代码一起 `git add` 进同一个 commit。COMMITS.md 永远不单独提交。
+7. **防循环提交** — 如果本次唯一的变更就是更新 COMMITS.md 自身（例如之前忘记更新了），那么只 commit + push COMMITS.md，但**不要再在 COMMITS.md 中为这条 commit 新增一条记录**——记录自己的提交会导致无限循环。
+8. **分支命名** — 默认使用 `main` 作为主分支。如果本地是 `master`，用 `git branch -M main` 改名。
 
 ---
 

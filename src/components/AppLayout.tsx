@@ -13,8 +13,8 @@ const { Sider, Content, Header } = Layout;
 
 const menuItems = [
   { key: '/', icon: <HomeOutlined />, label: '记账' },
-  { key: '/transactions', icon: <UnorderedListOutlined />, label: '交易记录' },
-  { key: '/report', icon: <PieChartOutlined />, label: '月度报表' },
+  { key: '/transactions', icon: <UnorderedListOutlined />, label: '明细' },
+  { key: '/report', icon: <PieChartOutlined />, label: '图标' },
   { key: '/settings', icon: <SettingOutlined />, label: '设置' },
 ];
 
@@ -24,7 +24,9 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   const currentKey = '/' + location.pathname.split('/').filter(Boolean)[0] || '/';
-  const selectedKey = menuItems.find((item) => currentKey.startsWith(item.key))?.key || '/';
+  const selectedKey = menuItems
+    .filter((item) => currentKey.startsWith(item.key))
+    .sort((a, b) => b.key.length - a.key.length)[0]?.key || '/';
 
   return (
     <Layout style={{ minHeight: '100vh' }}>

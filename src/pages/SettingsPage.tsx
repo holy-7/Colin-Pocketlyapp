@@ -344,7 +344,7 @@ function ExportSettings() {
   return (
     <Card title="数据导出">
       <p style={{ color: '#666', marginBottom: 24 }}>
-        导出所有交易记录。CSV 格式可用 Excel 打开，JSON 格式可用于备份恢复。
+        导出所有明细。CSV 格式可用 Excel 打开，JSON 格式可用于备份恢复。
       </p>
       <Space size={16}>
         <Button type="primary" icon={<DownloadOutlined />} onClick={exportCSV} size="large">
