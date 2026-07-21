@@ -8,3 +8,4 @@
 |:---|:---|:---|
 | 1 | chore: init project — Colin记账 初始提交 | 2026-07-21 |
 | 2 | docs: 生成提交记录文档 COMMITS.md | 2026-07-21 |
+| 3 | docs: 更新 COMMITS.md — 补充第2条记录 | 2026-07-21 |
