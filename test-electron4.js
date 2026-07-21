@@ -1,0 +1,1 @@
+const e = require("electron"); console.log("app:", typeof e.app, "BrowserWindow:", typeof e.BrowserWindow);

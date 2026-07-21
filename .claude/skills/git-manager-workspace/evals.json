@@ -1,0 +1,23 @@
+{
+  "skill_name": "git-manager",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "帮我把这个项目用 git 管理起来，创建本地仓库，推送到 GitHub 上，仓库叫 Colin记账，私有的。顺便生成一份提交记录文档。",
+      "expected_output": "完成 git init、.gitignore 检查、首次 commit、GitHub 仓库创建、push 成功、生成 COMMITS.md",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "我刚改完 src/pages/RecordPage.tsx 和 src/stores/transactionStore.ts，主要是加了一个按日期筛选交易的功能。帮我提交并推送到 GitHub。",
+      "expected_output": "展示变更文件、推荐 commit message（feat: 添加交易日期筛选功能）、执行 commit + push、更新 COMMITS.md",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我只想提交 src/components/ 下的改动，其他的先不动。帮我只提交这几个文件。",
+      "expected_output": "只 stage src/components/ 下的文件、不提交其他变更、正确 commit + push",
+      "files": []
+    }
+  ]
+}

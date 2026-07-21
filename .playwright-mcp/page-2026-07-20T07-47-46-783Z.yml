@@ -1,0 +1,192 @@
+- generic [ref=e1]:
+  - generic [ref=e13]:
+    - complementary [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - img "wallet" [ref=e17]
+          - generic [ref=e20]: Colin记账
+        - menu [ref=e21]:
+          - menuitem "home 记账" [ref=e22] [cursor=pointer]:
+            - img "home" [ref=e23]
+            - generic [ref=e26]: 记账
+          - menuitem "unordered-list 交易记录" [ref=e27] [cursor=pointer]:
+            - img "unordered-list" [ref=e28]
+            - generic [ref=e31]: 交易记录
+          - menuitem "pie-chart 月度报表" [active] [ref=e32] [cursor=pointer]:
+            - img "pie-chart" [ref=e33]
+            - generic [ref=e36]: 月度报表
+          - menuitem "setting 设置" [ref=e37] [cursor=pointer]:
+            - img "setting" [ref=e38]
+            - generic [ref=e41]: 设置
+      - img "left" [ref=e43] [cursor=pointer]
+    - generic [ref=e46]:
+      - banner [ref=e47]: 记账
+      - main [ref=e48]:
+        - generic [ref=e358]:
+          - tablist [ref=e359]:
+            - generic [ref=e361]:
+              - tab "分类管理" [selected] [ref=e363] [cursor=pointer]
+              - tab "预算设置" [ref=e365] [cursor=pointer]
+              - tab "账户管理" [ref=e367] [cursor=pointer]
+              - tab "数据导出" [ref=e369] [cursor=pointer]
+          - tabpanel [ref=e372]:
+            - generic [ref=e373]:
+              - generic [ref=e375]:
+                - generic [ref=e376]: 分类管理
+                - button "plus 添加分类" [ref=e378] [cursor=pointer]:
+                  - img "plus" [ref=e380]
+                  - generic [ref=e384]: 添加分类
+              - table [ref=e392]:
+                - rowgroup [ref=e399]:
+                  - row [ref=e400]:
+                    - columnheader "颜色" [ref=e401]
+                    - columnheader "名称" [ref=e402]
+                    - columnheader "类型" [ref=e403]
+                    - columnheader "系统预置" [ref=e404]
+                    - columnheader "操作" [ref=e405]
+                - rowgroup [ref=e406]:
+                  - row [ref=e407]:
+                    - cell "●" [ref=e408]
+                    - cell "交通" [ref=e409]
+                    - cell "支出" [ref=e410]
+                    - cell "预置" [ref=e412]
+                    - cell [ref=e414]:
+                      - generic [ref=e415]:
+                        - button [ref=e417] [cursor=pointer]:
+                          - img "edit" [ref=e419]
+                        - button "delete" [disabled] [ref=e423]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e424]:
+                    - cell "●" [ref=e425]
+                    - cell "住房" [ref=e426]
+                    - cell "支出" [ref=e427]
+                    - cell "预置" [ref=e429]
+                    - cell [ref=e431]:
+                      - generic [ref=e432]:
+                        - button [ref=e434] [cursor=pointer]:
+                          - img "edit" [ref=e436]
+                        - button "delete" [disabled] [ref=e440]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e441]:
+                    - cell "●" [ref=e442]
+                    - cell "其他支出" [ref=e443]
+                    - cell "支出" [ref=e444]
+                    - cell "预置" [ref=e446]
+                    - cell [ref=e448]:
+                      - generic [ref=e449]:
+                        - button [ref=e451] [cursor=pointer]:
+                          - img "edit" [ref=e453]
+                        - button "delete" [disabled] [ref=e457]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e458]:
+                    - cell "●" [ref=e459]
+                    - cell "医疗" [ref=e460]
+                    - cell "支出" [ref=e461]
+                    - cell "预置" [ref=e463]
+                    - cell [ref=e465]:
+                      - generic [ref=e466]:
+                        - button [ref=e468] [cursor=pointer]:
+                          - img "edit" [ref=e470]
+                        - button "delete" [disabled] [ref=e474]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e475]:
+                    - cell "●" [ref=e476]
+                    - cell "娱乐" [ref=e477]
+                    - cell "支出" [ref=e478]
+                    - cell "预置" [ref=e480]
+                    - cell [ref=e482]:
+                      - generic [ref=e483]:
+                        - button [ref=e485] [cursor=pointer]:
+                          - img "edit" [ref=e487]
+                        - button "delete" [disabled] [ref=e491]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e492]:
+                    - cell "●" [ref=e493]
+                    - cell "教育" [ref=e494]
+                    - cell "支出" [ref=e495]
+                    - cell "预置" [ref=e497]
+                    - cell [ref=e499]:
+                      - generic [ref=e500]:
+                        - button [ref=e502] [cursor=pointer]:
+                          - img "edit" [ref=e504]
+                        - button "delete" [disabled] [ref=e508]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e509]:
+                    - cell "●" [ref=e510]
+                    - cell "购物" [ref=e511]
+                    - cell "支出" [ref=e512]
+                    - cell "预置" [ref=e514]
+                    - cell [ref=e516]:
+                      - generic [ref=e517]:
+                        - button [ref=e519] [cursor=pointer]:
+                          - img "edit" [ref=e521]
+                        - button "delete" [disabled] [ref=e525]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e526]:
+                    - cell "●" [ref=e527]
+                    - cell "餐饮" [ref=e528]
+                    - cell "支出" [ref=e529]
+                    - cell "预置" [ref=e531]
+                    - cell [ref=e533]:
+                      - generic [ref=e534]:
+                        - button [ref=e536] [cursor=pointer]:
+                          - img "edit" [ref=e538]
+                        - button "delete" [disabled] [ref=e542]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e543]:
+                    - cell "●" [ref=e544]
+                    - cell "其他收入" [ref=e545]
+                    - cell "收入" [ref=e546]
+                    - cell "预置" [ref=e548]
+                    - cell [ref=e550]:
+                      - generic [ref=e551]:
+                        - button [ref=e553] [cursor=pointer]:
+                          - img "edit" [ref=e555]
+                        - button "delete" [disabled] [ref=e559]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e560]:
+                    - cell "●" [ref=e561]
+                    - cell "奖金" [ref=e562]
+                    - cell "收入" [ref=e563]
+                    - cell "预置" [ref=e565]
+                    - cell [ref=e567]:
+                      - generic [ref=e568]:
+                        - button [ref=e570] [cursor=pointer]:
+                          - img "edit" [ref=e572]
+                        - button "delete" [disabled] [ref=e576]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e577]:
+                    - cell "●" [ref=e578]
+                    - cell "工资" [ref=e579]
+                    - cell "收入" [ref=e580]
+                    - cell "预置" [ref=e582]
+                    - cell [ref=e584]:
+                      - generic [ref=e585]:
+                        - button [ref=e587] [cursor=pointer]:
+                          - img "edit" [ref=e589]
+                        - button "delete" [disabled] [ref=e593]:
+                          - generic:
+                            - img "delete"
+                  - row [ref=e594]:
+                    - cell "●" [ref=e595]
+                    - cell "投资" [ref=e596]
+                    - cell "收入" [ref=e597]
+                    - cell "预置" [ref=e599]
+                    - cell [ref=e601]:
+                      - generic [ref=e602]:
+                        - button [ref=e604] [cursor=pointer]:
+                          - img "edit" [ref=e606]
+                        - button "delete" [disabled] [ref=e610]:
+                          - generic:
+                            - img "delete"
+  - generic [ref=e170]: "0"

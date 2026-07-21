@@ -1,0 +1,57 @@
+- generic [ref=e12]:
+  - complementary [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - img "wallet" [ref=e16]
+        - generic [ref=e19]: Colin记账
+      - menu [ref=e20]:
+        - menuitem "home 记账" [ref=e21] [cursor=pointer]:
+          - img "home" [ref=e22]
+          - generic [ref=e25]: 记账
+        - menuitem "unordered-list 交易记录" [ref=e26] [cursor=pointer]:
+          - img "unordered-list" [ref=e27]
+          - generic [ref=e30]: 交易记录
+        - menuitem "pie-chart 月度报表" [ref=e31] [cursor=pointer]:
+          - img "pie-chart" [ref=e32]
+          - generic [ref=e35]: 月度报表
+        - menuitem "setting 设置" [ref=e36] [cursor=pointer]:
+          - img "setting" [ref=e37]
+          - generic [ref=e40]: 设置
+    - img "left" [ref=e42] [cursor=pointer]
+  - generic [ref=e45]:
+    - banner [ref=e46]: 记账
+    - main [ref=e47]:
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e53]:
+            - generic [ref=e54]: 今日已记
+            - generic [ref=e55]:
+              - generic [ref=e56]: "0"
+              - generic [ref=e57]: 笔
+          - generic [ref=e61]:
+            - generic [ref=e62]: 本月支出
+            - generic [ref=e63]:
+              - generic [ref=e64]: ¥
+              - generic [ref=e65]: "0.00"
+          - generic [ref=e69]:
+            - generic [ref=e70]: 交易总数
+            - generic [ref=e71]:
+              - generic [ref=e72]: "0"
+              - generic [ref=e73]: 笔
+          - generic [ref=e77]:
+            - generic [ref=e78]: 本月预算
+            - generic [ref=e79]:
+              - generic [ref=e80]: ¥
+              - generic [ref=e81]: "0.00"
+        - generic [ref=e82]:
+          - generic [ref=e84]:
+            - generic [ref=e85]: 今日记账
+            - button "plus 记一笔" [ref=e87] [cursor=pointer]:
+              - img "plus" [ref=e89]
+              - generic [ref=e93]: 记一笔
+          - generic [ref=e95]:
+            - img "暂无数据" [ref=e97]
+            - generic [ref=e109]: 今天还没有记账
+            - button "plus 点此记第一笔" [ref=e111] [cursor=pointer]:
+              - img "plus" [ref=e113]
+              - generic [ref=e117]: 点此记第一笔
