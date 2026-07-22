@@ -1,12 +1,11 @@
-import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu } from 'antd';
 import {
   HomeOutlined,
   UnorderedListOutlined,
   PieChartOutlined,
+  CompassOutlined,
   SettingOutlined,
-  WalletOutlined,
 } from '@ant-design/icons';
 
 const { Sider, Content, Header } = Layout;
@@ -14,14 +13,14 @@ const { Sider, Content, Header } = Layout;
 const menuItems = [
   { key: '/', icon: <HomeOutlined />, label: '记账' },
   { key: '/transactions', icon: <UnorderedListOutlined />, label: '明细' },
-  { key: '/report', icon: <PieChartOutlined />, label: '图标' },
+  { key: '/report', icon: <PieChartOutlined />, label: '图表' },
+  { key: '/discover', icon: <CompassOutlined />, label: '发现' },
   { key: '/settings', icon: <SettingOutlined />, label: '设置' },
 ];
 
 export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
 
   const currentKey = '/' + location.pathname.split('/').filter(Boolean)[0] || '/';
   const selectedKey = menuItems
@@ -31,9 +30,6 @@ export default function AppLayout() {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
-        collapsible
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
         theme="light"
         width={200}
         style={{ borderRight: '1px solid #f0f0f0' }}
@@ -45,14 +41,18 @@ export default function AppLayout() {
             alignItems: 'center',
             justifyContent: 'center',
             borderBottom: '1px solid #f0f0f0',
+            padding: '4px 12px',
+            overflow: 'visible',
           }}
         >
-          <WalletOutlined style={{ fontSize: collapsed ? 20 : 28, color: '#4ECDC4' }} />
-          {!collapsed && (
-            <span style={{ marginLeft: 8, fontSize: 18, fontWeight: 700, color: '#333' }}>
-              Colin记账
-            </span>
-          )}
+          <img
+            src="./logo.svg"
+            alt="Colin记账"
+            style={{
+              height: 252,
+              objectFit: 'contain',
+            }}
+          />
         </div>
         <Menu
           mode="inline"

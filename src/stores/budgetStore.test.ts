@@ -36,17 +36,26 @@ describe('budgetStore — getTotalBudget', () => {
     useBudgetStore.setState({ budgets: mockBudgets, error: null });
   });
 
-  it('正常：存在总预算（category_id 为 null）时返回其金额', () => {
+  it('正常：有分类预算时，getTotalBudget 返回分类预算之和', () => {
+    // mockBudgets: cat-1=1000, cat-2=500 → sum=1500, null 行=5000 应被忽略
     const { getTotalBudget } = useBudgetStore.getState();
-    expect(getTotalBudget()).toBe(5000);
+    expect(getTotalBudget()).toBe(1500);
   });
 
-  it('边界：无总预算时返回 0', () => {
+  it('正常：只有分类预算（无 null 行）时返回分类预算之和', () => {
     useBudgetStore.setState({
-      budgets: [mockBudgets[1], mockBudgets[2]], // 没有 category_id === null 的
+      budgets: [mockBudgets[1], mockBudgets[2]], // cat-1=1000, cat-2=500
     });
     const { getTotalBudget } = useBudgetStore.getState();
-    expect(getTotalBudget()).toBe(0);
+    expect(getTotalBudget()).toBe(1500);
+  });
+
+  it('边界：只有总预算行（category_id=null）无分类预算时，回退到总预算行', () => {
+    useBudgetStore.setState({
+      budgets: [mockBudgets[0]], // 只有 budget-total (null, 5000)
+    });
+    const { getTotalBudget } = useBudgetStore.getState();
+    expect(getTotalBudget()).toBe(5000);
   });
 
   it('边界：budgets 为空数组时返回 0', () => {

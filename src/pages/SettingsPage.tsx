@@ -6,10 +6,9 @@ import {
 import { PlusOutlined, EditOutlined, DeleteOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useCategoryStore } from '@/stores/categoryStore';
-import { useBudgetStore } from '@/stores/budgetStore';
 import { useAccountStore } from '@/stores/accountStore';
 import { supabase } from '@/lib/supabase';
-import type { Category, Budget, Account } from '@/types';
+import type { Category, Account } from '@/types';
 
 // 导出用行类型
 interface TransactionExportRow {
@@ -27,7 +26,6 @@ export default function SettingsPage() {
       defaultActiveKey="categories"
       items={[
         { key: 'categories', label: '分类管理', children: <CategorySettings /> },
-        { key: 'budget', label: '预算设置', children: <BudgetSettings /> },
         { key: 'accounts', label: '账户管理', children: <AccountSettings /> },
         { key: 'export', label: '数据导出', children: <ExportSettings /> },
       ]}
@@ -112,7 +110,7 @@ function CategorySettings() {
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => { setModalOpen(false); setEditing(null); }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" initialValues={{ type: 'expense' }}>
           <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入分类名称' }]}>
@@ -129,84 +127,6 @@ function CategorySettings() {
           </Form.Item>
           <Form.Item name="color" label="颜色">
             <ColorPicker format="hex" />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Card>
-  );
-}
-
-// ==================== 预算设置 ====================
-function BudgetSettings() {
-  const { budgets, setBudget, deleteBudget } = useBudgetStore();
-  const { categories } = useCategoryStore();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [form] = Form.useForm();
-  const { message } = App.useApp();
-
-  const handleSubmit = async () => {
-    const values = await form.validateFields();
-    await setBudget({
-      category_id: values.category_id || undefined,
-      amount: values.amount,
-    });
-    message.success('预算已保存');
-    setModalOpen(false);
-  };
-
-  const columns: ColumnsType<Budget> = [
-    {
-      title: '预算范围', key: 'scope',
-      render: (_, r) => r.category_id ? (r.category?.name || '未知分类') : '总预算',
-    },
-    {
-      title: '金额', dataIndex: 'amount', key: 'amount',
-      render: (v: number) => <strong>¥{v.toFixed(2)}</strong>,
-    },
-    { title: '周期', dataIndex: 'period', key: 'period', render: () => '每月' },
-    { title: '开始日期', dataIndex: 'start_date', key: 'start_date' },
-    {
-      title: '操作', key: 'action',
-      render: (_, record) => (
-        <Popconfirm title="删除此预算？" onConfirm={async () => { await deleteBudget(record.id); message.success('已删除'); }}>
-          <Button type="link" size="small" danger>删除</Button>
-        </Popconfirm>
-      ),
-    },
-  ];
-
-  return (
-    <Card
-      title="预算设置"
-      extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalOpen(true); }}>
-        设置预算
-      </Button>}
-    >
-      <Table columns={columns} dataSource={budgets} rowKey="id" pagination={false} size="middle"
-        locale={{ emptyText: '尚未设置预算，点击右上角按钮添加' }} />
-
-      <Modal title="设置预算" open={modalOpen} onOk={handleSubmit}
-        onCancel={() => setModalOpen(false)} destroyOnClose>
-        <Form form={form} layout="vertical">
-          <Form.Item name="category_id" label="分类（留空为总预算）">
-            <Select
-              allowClear
-              placeholder="全部分类"
-              options={categories.filter((c) => c.type === 'expense').map((c) => ({
-                label: c.name,
-                value: c.id,
-              }))}
-            />
-          </Form.Item>
-          <Form.Item name="amount" label="月度预算金额" rules={[{ required: true, message: '请输入预算金额' }]}>
-            <InputNumber
-              prefix="¥"
-              min={0}
-              max={99999999}
-              precision={2}
-              style={{ width: '100%' }}
-              placeholder="0.00"
-            />
           </Form.Item>
         </Form>
       </Modal>
@@ -270,7 +190,7 @@ function AccountSettings() {
       <Table columns={columns} dataSource={accounts} rowKey="id" pagination={false} size="middle" />
 
       <Modal title={editing ? '编辑账户' : '添加账户'} open={modalOpen} onOk={handleSubmit}
-        onCancel={() => { setModalOpen(false); setEditing(null); }} destroyOnClose>
+        onCancel={() => { setModalOpen(false); setEditing(null); }} destroyOnHidden>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="账户名称" rules={[{ required: true }]}>
             <Input placeholder="如：招商银行卡" />

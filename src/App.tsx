@@ -5,6 +5,7 @@ import AppLayout from '@/components/AppLayout';
 import HomePage from '@/pages/HomePage';
 import RecordPage from '@/pages/RecordPage';
 import StatisticsPage from '@/pages/StatisticsPage';
+import DiscoverPage from '@/pages/DiscoverPage';
 import SettingsPage from '@/pages/SettingsPage';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/transactions" element={<RecordPage />} />
           <Route path="/report" element={<StatisticsPage />} />
+          <Route path="/discover" element={<DiscoverPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

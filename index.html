@@ -4,6 +4,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Colin记账</title>
+    <style>
+      /* 图表页 Segmented 激活态：蓝底白字，加粗加长 */
+      .stats-segmented-primary .ant-segmented-item {
+        flex: 1;
+        min-width: 0;
+      }
+      .stats-segmented-primary .ant-segmented-item-label {
+        font-size: 16px;
+        font-weight: 500;
+        padding: 4px 0;
+      }
+      .stats-segmented-primary .ant-segmented-item-selected {
+        background: #1677FF !important;
+        border-radius: 6px;
+      }
+      .stats-segmented-primary .ant-segmented-item-selected .ant-segmented-item-label {
+        color: #fff !important;
+        font-weight: 600;
+      }
+      /* 隐藏周期滚动条 */
+      .stats-period-scroll::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

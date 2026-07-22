@@ -10,3 +10,10 @@ Thumbs.db
 
 # 测试门临时文件
 .claude/results/
+
+# 测试截图与临时文件
+screenshots/
+homepage-test.png
+report-chart.png
+*.yml
+.playwright-mcp/

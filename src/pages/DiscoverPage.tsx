@@ -1,0 +1,611 @@
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Card, Row, Col, Table, Button, Modal, Form, Select, InputNumber,
+  Popconfirm, Tag, Progress, Alert, Empty, Spin, Statistic,
+} from 'antd';
+import {
+  PlusOutlined, DeleteOutlined, WalletOutlined,
+  RiseOutlined, FallOutlined, FireOutlined, ThunderboltOutlined,
+} from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
+import BudgetProgress from '@/components/BudgetProgress';
+import { useBudgetStore } from '@/stores/budgetStore';
+import { useTransactionStore } from '@/stores/transactionStore';
+import { useCategoryStore } from '@/stores/categoryStore';
+import type { Budget, Transaction } from '@/types';
+
+// ============================================================
+// 常量
+// ============================================================
+const COLORS = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#F7DC6F', '#BB8FCE',
+  '#E74C3C', '#3498DB', '#95A5A6', '#2ECC71', '#1ABC9C',
+];
+
+// ============================================================
+// DiscoverPage
+// ============================================================
+
+export default function DiscoverPage() {
+  return (
+    <div>
+      <BudgetSection />
+      <div style={{ marginTop: 32 }}>
+        <InsightsSection />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 区域一：预算管理
+// ============================================================
+
+function BudgetSection() {
+  const { budgets, fetchBudgets, setBudget, deleteBudget, getTotalBudget } = useBudgetStore();
+  const { categories } = useCategoryStore();
+  const { getTransactionsByDateRange } = useTransactionStore();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form] = Form.useForm();
+  const [spentByCategory, setSpentByCategory] = useState<Record<string, number>>({});
+  const [totalSpent, setTotalSpent] = useState(0);
+
+  // 本月日期范围
+  const now = dayjs();
+  const monthStart = now.startOf('month').format('YYYY-MM-DD');
+  const monthEnd = now.endOf('month').format('YYYY-MM-DD');
+
+  // ============================================================
+  // 数据加载
+  // ============================================================
+  const loadSpending = useCallback(async () => {
+    const txs = await getTransactionsByDateRange(monthStart, monthEnd);
+    const expenses = txs.filter((t) => t.type === 'expense');
+
+    // 按分类汇总
+    const catMap: Record<string, number> = {};
+    for (const t of expenses) {
+      catMap[t.category_id] = (catMap[t.category_id] || 0) + t.amount;
+    }
+    setSpentByCategory(catMap);
+    setTotalSpent(expenses.reduce((s, t) => s + t.amount, 0));
+  }, [monthStart, monthEnd, getTransactionsByDateRange]);
+
+  useEffect(() => {
+    fetchBudgets();
+  }, [fetchBudgets]);
+
+  useEffect(() => {
+    loadSpending();
+  }, [loadSpending]);
+
+  // ============================================================
+  // 计算
+  // ============================================================
+  const totalBudget = getTotalBudget();
+  const remaining = totalBudget - totalSpent;
+
+  // 分类预算表格数据
+  const categoryBudgetRows = budgets
+    .filter((b) => b.category_id !== null)
+    .map((b) => {
+      const cat = categories.find((c) => c.id === b.category_id);
+      const spent = spentByCategory[b.category_id || ''] || 0;
+      const pct = b.amount > 0 ? Math.round((spent / b.amount) * 100) : 0;
+      return {
+        key: b.id,
+        budget: b,
+        categoryName: cat?.name || '未知分类',
+        categoryColor: cat?.color || '#999',
+        amount: b.amount,
+        spent,
+        percent: pct,
+      };
+    });
+
+  // ============================================================
+  // 操作
+  // ============================================================
+  const handleSubmit = async () => {
+    const values = await form.validateFields();
+    await setBudget({
+      category_id: values.category_id || undefined,
+      amount: values.amount,
+    });
+    setModalOpen(false);
+    form.resetFields();
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteBudget(id);
+  };
+
+  const openBudgetModal = () => {
+    form.resetFields();
+    setModalOpen(true);
+  };
+
+  // 表格列定义
+  const columns: ColumnsType<typeof categoryBudgetRows[number]> = [
+    {
+      title: '分类', dataIndex: 'categoryName', key: 'categoryName',
+      render: (name: string, record) => (
+        <span>
+          <span style={{
+            display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
+            background: record.categoryColor, marginRight: 8,
+          }} />
+          {name}
+        </span>
+      ),
+    },
+    {
+      title: '预算', dataIndex: 'amount', key: 'amount',
+      render: (v: number) => <strong>¥{v.toFixed(2)}</strong>,
+    },
+    {
+      title: '已花', dataIndex: 'spent', key: 'spent',
+      render: (v: number) => <span style={{ color: '#E74C3C' }}>¥{v.toFixed(2)}</span>,
+    },
+    {
+      title: '进度', key: 'progress', width: 180,
+      render: (_: unknown, record) => (
+        <Progress
+          percent={Math.min(record.percent, 100)}
+          size="small"
+          strokeColor={record.percent > 100 ? '#E74C3C' : record.percent > 80 ? '#F39C12' : '#4ECDC4'}
+          format={() => `${record.percent}%`}
+          status={record.percent > 100 ? 'exception' : 'active'}
+        />
+      ),
+    },
+    {
+      title: '操作', key: 'action', width: 60,
+      render: (_: unknown, record) => (
+        <Popconfirm title="删除此预算？" onConfirm={() => handleDelete(record.budget.id)}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
+      ),
+    },
+  ];
+
+  // ============================================================
+  // 渲染
+  // ============================================================
+  const expenseCategories = categories.filter((c) => c.type === 'expense');
+
+  return (
+    <>
+      <div style={{ marginBottom: 16, fontSize: 18, fontWeight: 600 }}>
+        <WalletOutlined style={{ marginRight: 8 }} />
+        预算管理
+      </div>
+
+      {/* 概览卡片 */}
+      <Row gutter={16} style={{ marginBottom: 20 }}>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title="月度总预算"
+              value={totalBudget}
+              precision={2}
+              prefix="¥"
+              valueStyle={{ color: totalBudget > 0 ? '#4ECDC4' : '#999' }}
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title="本月已支出"
+              value={totalSpent}
+              precision={2}
+              prefix="¥"
+              valueStyle={{ color: '#E74C3C' }}
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title="剩余可花"
+              value={totalBudget > 0 ? remaining : 0}
+              precision={2}
+              prefix="¥"
+              valueStyle={{ color: remaining >= 0 ? '#27AE60' : '#E74C3C' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 总预算进度条 */}
+      {totalBudget > 0 && (
+        <Card style={{ marginBottom: 20 }}>
+          <BudgetProgress totalBudget={totalBudget} spent={totalSpent} />
+        </Card>
+      )}
+
+      {/* 分类预算表格 */}
+      <Card
+        title="分类预算"
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={openBudgetModal}>
+            设置预算
+          </Button>
+        }
+      >
+        {categoryBudgetRows.length === 0 ? (
+          <Empty description="尚未设置分类预算" style={{ padding: '20px 0' }} />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={categoryBudgetRows}
+            pagination={false}
+            size="middle"
+          />
+        )}
+      </Card>
+
+      {/* 预算设置弹窗 */}
+      <Modal
+        title="设置预算"
+        open={modalOpen}
+        onOk={handleSubmit}
+        onCancel={() => setModalOpen(false)}
+        destroyOnHidden
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item name="category_id" label="分类（留空为总预算）">
+            <Select
+              allowClear
+              placeholder="全部分类"
+              options={expenseCategories.map((c) => ({
+                label: c.name,
+                value: c.id,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item
+            name="amount"
+            label="月度预算金额"
+            rules={[{ required: true, message: '请输入预算金额' }]}
+          >
+            <InputNumber
+              prefix="¥"
+              min={0}
+              max={99999999}
+              precision={2}
+              style={{ width: '100%' }}
+              placeholder="0.00"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  );
+}
+
+// ============================================================
+// 区域二：消费洞察
+// ============================================================
+
+function InsightsSection() {
+  const { budgets } = useBudgetStore();
+  const { categories } = useCategoryStore();
+  const { getTransactionsByDateRange } = useTransactionStore();
+  const [loading, setLoading] = useState(false);
+  const [insights, setInsights] = useState<InsightsData | null>(null);
+
+  const now = dayjs();
+  const thisMonth = {
+    from: now.startOf('month').format('YYYY-MM-DD'),
+    to: now.endOf('month').format('YYYY-MM-DD'),
+    days: now.daysInMonth(),
+  };
+  const lastMonth = {
+    from: now.subtract(1, 'month').startOf('month').format('YYYY-MM-DD'),
+    to: now.subtract(1, 'month').endOf('month').format('YYYY-MM-DD'),
+    days: now.subtract(1, 'month').daysInMonth(),
+  };
+
+  useEffect(() => {
+    loadInsights();
+  }, []);
+
+  const loadInsights = async () => {
+    setLoading(true);
+    const [thisTxs, lastTxs] = await Promise.all([
+      getTransactionsByDateRange(thisMonth.from, thisMonth.to),
+      getTransactionsByDateRange(lastMonth.from, lastMonth.to),
+    ]);
+
+    const thisExpenses = thisTxs.filter((t) => t.type === 'expense');
+    const lastExpenses = lastTxs.filter((t) => t.type === 'expense');
+
+    // Top 3 分类
+    const topCategories = getTopCategories(thisExpenses, lastExpenses, categories);
+
+    // 日均
+    const thisDailyAvg = thisExpenses.reduce((s, t) => s + t.amount, 0) / thisMonth.days;
+    const lastDailyAvg = lastExpenses.reduce((s, t) => s + t.amount, 0) / lastMonth.days;
+
+    // 高消费日
+    const topDays = getTopDays(thisExpenses);
+
+    // 超支分类
+    const overBudgetCats = getOverBudgetCategories(thisExpenses, budgets, categories);
+
+    setInsights({ topCategories, thisDailyAvg, lastDailyAvg, topDays, overBudgetCats });
+    setLoading(false);
+  };
+
+  const expenseCategories = categories.filter((c) => c.type === 'expense');
+  const hasData = insights && expenseCategories.length > 0;
+
+  return (
+    <>
+      <div style={{ marginBottom: 16, fontSize: 18, fontWeight: 600 }}>
+        <ThunderboltOutlined style={{ marginRight: 8 }} />
+        消费洞察
+        <span style={{ fontSize: 13, color: '#999', fontWeight: 400, marginLeft: 8 }}>
+          {now.format('YYYY年M月')}
+        </span>
+      </div>
+
+      <Spin spinning={loading}>
+        {!hasData ? (
+          <Empty description="暂无消费数据" style={{ padding: '40px 0' }} />
+        ) : (
+          <>
+            {/* 超支提醒 */}
+            {insights.overBudgetCats.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                {insights.overBudgetCats.map((cat) => (
+                  <Alert
+                    key={cat.categoryId}
+                    message={
+                      <span>
+                        <strong>{cat.categoryName}</strong> 已超预算：
+                        预算 ¥{cat.budget.toFixed(2)}，已花 ¥{cat.spent.toFixed(2)}，
+                        超出 {(cat.spent - cat.budget).toFixed(2)}（{Math.round((cat.spent / cat.budget - 1) * 100)}%）
+                      </span>
+                    }
+                    type={cat.spent / cat.budget > 1.2 ? 'error' : 'warning'}
+                    showIcon
+                    style={{ marginBottom: 8 }}
+                  />
+                ))}
+              </div>
+            )}
+
+            <Row gutter={16} style={{ marginBottom: 20 }}>
+              {/* 消费排行榜 */}
+              <Col span={12}>
+                <Card title={<span><RiseOutlined style={{ marginRight: 6, color: '#E74C3C' }} />消费排行 Top 3</span>}>
+                  {insights.topCategories.length === 0 ? (
+                    <Empty description="本月暂无支出" />
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      {insights.topCategories.map((cat, idx) => (
+                        <div key={cat.categoryId}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <Tag color={COLORS[idx % COLORS.length]}>{idx + 1}</Tag>
+                              <span style={{ fontWeight: 500 }}>{cat.categoryName}</span>
+                            </span>
+                            <span style={{ fontWeight: 600, color: '#E74C3C' }}>
+                              ¥{cat.amount.toFixed(2)}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#999' }}>
+                            <span>占比 {cat.percentage.toFixed(1)}%</span>
+                            {cat.lastAmount !== null && (
+                              <CompareText
+                                current={cat.amount}
+                                previous={cat.lastAmount}
+                                isExpense
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </Col>
+
+              {/* 日均 + 高消费日 */}
+              <Col span={12}>
+                <Card title={<span><FireOutlined style={{ marginRight: 6, color: '#F39C12' }} />消费趋势</span>}>
+                  {/* 日均对比 */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>日均支出</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
+                      <span style={{ fontSize: 28, fontWeight: 700, color: '#E74C3C' }}>
+                        ¥{insights.thisDailyAvg.toFixed(2)}
+                      </span>
+                      {insights.lastDailyAvg > 0 && (
+                        <CompareText
+                          current={insights.thisDailyAvg}
+                          previous={insights.lastDailyAvg}
+                          isExpense
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 高消费日 */}
+                  <div>
+                    <div style={{ fontSize: 13, color: '#999', marginBottom: 8 }}>高消费日</div>
+                    {insights.topDays.length === 0 ? (
+                      <span style={{ fontSize: 13, color: '#999' }}>暂无数据</span>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {insights.topDays.map((d, idx) => (
+                          <div key={d.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Tag color={idx === 0 ? 'red' : idx === 1 ? 'orange' : 'gold'}>
+                                {idx + 1}
+                              </Tag>
+                              <span>{d.date}</span>
+                            </span>
+                            <span style={{ fontWeight: 600, color: '#E74C3C' }}>
+                              ¥{d.amount.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+          </>
+        )}
+      </Spin>
+    </>
+  );
+}
+
+// ============================================================
+// 辅助类型与函数
+// ============================================================
+
+interface TopCategory {
+  categoryId: string;
+  categoryName: string;
+  amount: number;
+  percentage: number;
+  lastAmount: number | null;
+}
+
+interface OverBudgetCat {
+  categoryId: string;
+  categoryName: string;
+  budget: number;
+  spent: number;
+}
+
+interface TopDay {
+  date: string;
+  amount: number;
+}
+
+interface InsightsData {
+  topCategories: TopCategory[];
+  thisDailyAvg: number;
+  lastDailyAvg: number;
+  topDays: TopDay[];
+  overBudgetCats: OverBudgetCat[];
+}
+
+/** Top 3 支出分类 + 上月对比 */
+function getTopCategories(
+  thisExpenses: Transaction[],
+  lastExpenses: Transaction[],
+  categories: { id: string; name: string }[],
+): TopCategory[] {
+  const totalThis = thisExpenses.reduce((s, t) => s + t.amount, 0);
+
+  // 本月分类汇总
+  const thisMap = new Map<string, number>();
+  for (const t of thisExpenses) {
+    thisMap.set(t.category_id, (thisMap.get(t.category_id) || 0) + t.amount);
+  }
+
+  // 上月分类汇总
+  const lastMap = new Map<string, number>();
+  for (const t of lastExpenses) {
+    lastMap.set(t.category_id, (lastMap.get(t.category_id) || 0) + t.amount);
+  }
+
+  // 取 top 3
+  const sorted = Array.from(thisMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  return sorted.map(([catId, amount]) => {
+    const cat = categories.find((c) => c.id === catId);
+    return {
+      categoryId: catId,
+      categoryName: cat?.name || '未分类',
+      amount,
+      percentage: totalThis > 0 ? (amount / totalThis) * 100 : 0,
+      lastAmount: lastMap.has(catId) ? lastMap.get(catId)! : null,
+    };
+  });
+}
+
+/** 超支分类检测 */
+function getOverBudgetCategories(
+  expenses: Transaction[],
+  budgets: Budget[],
+  categories: { id: string; name: string }[],
+): OverBudgetCat[] {
+  const catSpent = new Map<string, number>();
+  for (const t of expenses) {
+    catSpent.set(t.category_id, (catSpent.get(t.category_id) || 0) + t.amount);
+  }
+
+  const results: OverBudgetCat[] = [];
+  for (const b of budgets) {
+    if (!b.category_id) continue; // 跳过总预算
+    const spent = catSpent.get(b.category_id) || 0;
+    if (spent > b.amount && b.amount > 0) {
+      const cat = categories.find((c) => c.id === b.category_id);
+      results.push({
+        categoryId: b.category_id,
+        categoryName: cat?.name || '未知分类',
+        budget: b.amount,
+        spent,
+      });
+    }
+  }
+  return results.sort((a, b) => b.spent / b.budget - a.spent / a.budget);
+}
+
+/** 高消费日 Top 3 */
+function getTopDays(expenses: Transaction[]): TopDay[] {
+  const dayMap = new Map<string, number>();
+  for (const t of expenses) {
+    dayMap.set(t.date, (dayMap.get(t.date) || 0) + t.amount);
+  }
+  return Array.from(dayMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([date, amount]) => ({ date, amount }));
+}
+
+// ============================================================
+// 子组件
+// ============================================================
+
+interface CompareTextProps {
+  current: number;
+  previous: number;
+  isExpense: boolean;
+}
+
+/** 环比变化文本 */
+function CompareText({ current, previous, isExpense }: CompareTextProps) {
+  if (previous === 0) {
+    return <span>上月无数据</span>;
+  }
+
+  const diff = current - previous;
+  const pct = Math.abs((diff / previous) * 100);
+  const isUp = diff > 0;
+
+  if (diff === 0) return <span>持平</span>;
+
+  const bad = isExpense ? isUp : !isUp;
+  const color = bad ? '#E74C3C' : '#27AE60';
+  const Arrow = isUp ? RiseOutlined : FallOutlined;
+
+  return (
+    <span style={{ color }}>
+      <Arrow style={{ fontSize: 11 }} /> {pct.toFixed(1)}% 较上月
+    </span>
+  );
+}
