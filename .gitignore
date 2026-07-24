@@ -13,7 +13,8 @@ Thumbs.db
 
 # 测试截图与临时文件
 screenshots/
-homepage-test.png
-report-chart.png
+*.png
+mobile-snapshot.txt
 *.yml
 .playwright-mcp/
+LOOP-STATE.md

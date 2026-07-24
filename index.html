@@ -2,9 +2,48 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#FFD93D" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Colin记账" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <title>Colin记账</title>
     <style>
+      /* ============ 全局重置：消除默认边距、防止溢出与背景色穿透 ============ */
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #F5F5F5;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+      /* 确保 React / antd 中间 wrapper 也继承高度 */
+      #root > div {
+        height: 100%;
+      }
+
+      /* ============ 统一滚动条样式 ============ */
+      ::-webkit-scrollbar {
+        width: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #d9d9d9;
+        border-radius: 2px;
+      }
+
       /* 图表页 Segmented 激活态：蓝底白字，加粗加长 */
       .stats-segmented-primary .ant-segmented-item {
         flex: 1;

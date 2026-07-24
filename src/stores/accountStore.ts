@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { syncManager } from '@/services/syncManager';
+import { getCachedRecords, cacheRecords } from '@/db/database';
 import type { Account } from '@/types';
 
 interface AccountStore {
@@ -26,6 +28,15 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
     if (initialized && !force && !loading) return;
 
     set({ loading: true, error: null });
+
+    // 本地缓存优先
+    try {
+      const cached = await getCachedRecords<Account>('accounts');
+      if (cached.length > 0) {
+        set({ accounts: cached, initialized: true });
+      }
+    } catch { /* ignore */ }
+
     const { data, error } = await supabase
       .from('accounts')
       .select('*')
@@ -36,6 +47,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       return;
     }
     set({ accounts: data as Account[], loading: false, initialized: true });
+    try { await cacheRecords('accounts', data as Account[]); } catch { /* ignore */ }
   },
 
   addAccount: async (data) => {
@@ -50,7 +62,14 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       .single();
 
     if (error) {
-      set({ error: error.message });
+      // 离线降级
+      const tempId = crypto.randomUUID();
+      set((state) => ({ accounts: [...state.accounts, { id: tempId, ...data, balance: data.balance ?? 0, currency: 'CNY', created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Account] }));
+      await syncManager.writeOptimistic('accounts', 'INSERT', tempId, {
+        id: tempId, name: data.name, type: data.type,
+        balance: data.balance ?? 0, currency: 'CNY',
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      });
       return;
     }
     set((state) => ({ accounts: [...state.accounts, created as Account] }));
@@ -63,9 +82,9 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       .eq('id', id);
 
     if (error) {
-      set({ error: error.message });
-      return;
+      await syncManager.writeOptimistic('accounts', 'UPDATE', id, { id, ...data, updated_at: new Date().toISOString() });
     }
+
     set((state) => ({
       accounts: state.accounts.map((a) => (a.id === id ? { ...a, ...data } : a)),
     }));
@@ -74,8 +93,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
   deleteAccount: async (id) => {
     const { error } = await supabase.from('accounts').delete().eq('id', id);
     if (error) {
-      set({ error: error.message });
-      return false;
+      await syncManager.writeOptimistic('accounts', 'DELETE', id);
     }
     set((state) => ({ accounts: state.accounts.filter((a) => a.id !== id) }));
     return true;

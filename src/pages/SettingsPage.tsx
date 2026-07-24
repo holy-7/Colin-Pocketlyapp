@@ -3,24 +3,30 @@ import {
   Card, Tabs, Table, Button, Modal, Form, Input, Select, InputNumber,
   Popconfirm, Tag, Space, App, ColorPicker,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, DownloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, DownloadOutlined, RightOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
-import { supabase } from '@/lib/supabase';
+import { useTransactionStore } from '@/stores/transactionStore';
+import MobileHeader from '@/components/MobileHeader';
+import {
+  fetchAllTransactionsForExport,
+  exportToExcel,
+  exportToPDF,
+  exportToCSV,
+  exportToJSON,
+} from '@/services/exportService';
+import type { ExportRow } from '@/services/exportService';
 import type { Category, Account } from '@/types';
 
-// 导出用行类型
-interface TransactionExportRow {
-  date: string;
-  type: string;
-  amount: number;
-  note: string | null;
-  account: { name: string } | null;
-  category: { name: string } | null;
-}
-
 export default function SettingsPage() {
+  const { isMobile } = useResponsive();
+
+  if (isMobile) {
+    return <MobileProfileView />;
+  }
+
   return (
     <Tabs
       defaultActiveKey="categories"
@@ -216,61 +222,64 @@ function AccountSettings() {
 // ==================== 数据导出 ====================
 function ExportSettings() {
   const { message } = App.useApp();
+  const [exporting, setExporting] = useState<string | null>(null);
 
-  const exportCSV = async () => {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*, account:accounts(name), category:categories(name)')
-      .order('date', { ascending: false });
-
-    if (error) {
-      message.error('导出失败');
-      return;
+  const handleExport = async (type: 'xlsx' | 'pdf' | 'csv' | 'json') => {
+    setExporting(type);
+    try {
+      const rows: ExportRow[] = await fetchAllTransactionsForExport();
+      switch (type) {
+        case 'xlsx': exportToExcel(rows); message.success('Excel 导出成功'); break;
+        case 'pdf': exportToPDF(rows); message.success('PDF 导出成功'); break;
+        case 'csv': exportToCSV(rows); message.success('CSV 导出成功'); break;
+        case 'json': exportToJSON(rows); message.success('JSON 导出成功'); break;
+      }
+    } catch {
+      message.error('导出失败，请稍后重试');
+    } finally {
+      setExporting(null);
     }
-
-    // BOM 解决中文乱码
-    const BOM = '﻿';
-    const headers = ['日期', '类型', '分类', '金额', '账户', '备注'];
-    const rows = (data as unknown as TransactionExportRow[]).map((t) => [
-      t.date,
-      t.type === 'expense' ? '支出' : '收入',
-      t.category?.name || '',
-      t.amount,
-      t.account?.name || '',
-      t.note || '',
-    ]);
-
-    const csv = BOM + [headers, ...rows].map((row) => row.join(',')).join('\n');
-    downloadFile(csv, `colin-export-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8');
-    message.success('CSV 导出成功');
-  };
-
-  const exportJSON = async () => {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*, account:accounts(name), category:categories(name)')
-      .order('date', { ascending: false });
-
-    if (error) {
-      message.error('导出失败');
-      return;
-    }
-
-    const json = JSON.stringify(data, null, 2);
-    downloadFile(json, `colin-export-${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
-    message.success('JSON 导出成功');
   };
 
   return (
     <Card title="数据导出">
       <p style={{ color: '#666', marginBottom: 24 }}>
-        导出所有明细。CSV 格式可用 Excel 打开，JSON 格式可用于备份恢复。
+        导出所有交易明细，支持 Excel (.xlsx)、PDF、CSV 和 JSON 四种格式。
       </p>
-      <Space size={16}>
-        <Button type="primary" icon={<DownloadOutlined />} onClick={exportCSV} size="large">
+      <Space size={16} wrap>
+        <Button
+          type="primary"
+          icon={<DownloadOutlined />}
+          onClick={() => handleExport('xlsx')}
+          size="large"
+          loading={exporting === 'xlsx'}
+          style={{ background: '#FFD93D', borderColor: '#FFD93D', color: '#333', fontWeight: 600 }}
+        >
+          导出 Excel (.xlsx)
+        </Button>
+        <Button
+          type="primary"
+          icon={<DownloadOutlined />}
+          onClick={() => handleExport('pdf')}
+          size="large"
+          loading={exporting === 'pdf'}
+        >
+          导出 PDF
+        </Button>
+        <Button
+          icon={<DownloadOutlined />}
+          onClick={() => handleExport('csv')}
+          size="large"
+          loading={exporting === 'csv'}
+        >
           导出 CSV
         </Button>
-        <Button icon={<DownloadOutlined />} onClick={exportJSON} size="large">
+        <Button
+          icon={<DownloadOutlined />}
+          onClick={() => handleExport('json')}
+          size="large"
+          loading={exporting === 'json'}
+        >
           导出 JSON
         </Button>
       </Space>
@@ -278,15 +287,381 @@ function ExportSettings() {
   );
 }
 
-// 工具函数：触发文件下载
-function downloadFile(content: string, filename: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+// ============================================================
+// 移动端个人中心（"我的"）
+// ============================================================
+
+function MobileProfileView() {
+  const { categories } = useCategoryStore();
+  const { accounts } = useAccountStore();
+  const { totalCount, transactions } = useTransactionStore();
+  const [activeView, setActiveView] = useState<'menu' | 'categories' | 'accounts' | 'export'>('menu');
+
+  // 统计天数
+  const uniqueDays = new Set(transactions.map((t) => t.date)).size;
+
+  if (activeView === 'categories') {
+    return (
+      <MobileSettingsSheet title="分类管理" onBack={() => setActiveView('menu')}>
+        <MobileCategoryList categories={categories} />
+      </MobileSettingsSheet>
+    );
+  }
+
+  if (activeView === 'accounts') {
+    return (
+      <MobileSettingsSheet title="账户管理" onBack={() => setActiveView('menu')}>
+        <MobileAccountList accounts={accounts} />
+      </MobileSettingsSheet>
+    );
+  }
+
+  if (activeView === 'export') {
+    return (
+      <MobileSettingsSheet title="数据导出" onBack={() => setActiveView('menu')}>
+        <MobileExportView />
+      </MobileSettingsSheet>
+    );
+  }
+
+  // 主菜单
+  return (
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#F5F5F5',
+        overflow: 'hidden',
+      }}
+    >
+      {/* 黄色个人头部 */}
+      <MobileHeader style={{ padding: '20px 16px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            style={{
+              width: 60,
+              height: 60,
+              borderRadius: '50%',
+              background: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="#F5A623" width="30" height="30">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+            </svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>小鲸记账</div>
+            <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)', marginTop: 2 }}>
+              Colin记账 V1.0.0
+            </div>
+          </div>
+        </div>
+
+        {/* 统计行 */}
+        <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 22, fontWeight: 700, color: '#333' }}>{uniqueDays}</span>
+            <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.6)' }}>记账天数</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 22, fontWeight: 700, color: '#333' }}>{totalCount}</span>
+            <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.6)' }}>记账笔数</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 22, fontWeight: 700, color: '#333' }}>{accounts.length}</span>
+            <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.6)' }}>账户数</span>
+          </div>
+        </div>
+      </MobileHeader>
+
+      {/* 菜单列表 */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', width: '100%', padding: '12px 16px 80px 12px' }}>
+        {/* 功能菜单 */}
+        <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
+          <MobileMenuItem
+            label="分类管理"
+            subtitle={`${categories.length}个分类`}
+            onClick={() => setActiveView('categories')}
+          />
+          <MobileMenuItem
+            label="账户管理"
+            subtitle={`${accounts.length}个账户`}
+            onClick={() => setActiveView('accounts')}
+          />
+          <MobileMenuItem
+            label="数据导出"
+            subtitle="Excel / PDF / CSV / JSON"
+            onClick={() => setActiveView('export')}
+          />
+        </div>
+
+        {/* 关于 */}
+        <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', marginTop: 12 }}>
+          <MobileMenuItem
+            label="关于小鲸记账"
+            subtitle="V1.0.0"
+            onClick={() => {}}
+            last
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
+
+// ============================================================
+// 移动端子页面容器
+// ============================================================
+
+function MobileSettingsSheet({
+  title,
+  onBack,
+  children,
+}: {
+  title: string;
+  onBack: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#F5F5F5',
+        overflow: 'hidden',
+      }}
+    >
+      <MobileHeader
+        style={{
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <button
+          onClick={onBack}
+          style={{
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            fontSize: 18,
+            color: '#333',
+            padding: 0,
+          }}
+        >
+          ＜
+        </button>
+        <span style={{ fontSize: 17, fontWeight: 600, color: '#333' }}>{title}</span>
+      </MobileHeader>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', width: '100%', padding: '12px 16px 80px 12px' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 菜单项
+// ============================================================
+
+function MobileMenuItem({
+  label,
+  subtitle,
+  onClick,
+  last,
+}: {
+  label: string;
+  subtitle?: string;
+  onClick: () => void;
+  last?: boolean;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '14px 16px',
+        borderBottom: last ? 'none' : '1px solid #f5f5f5',
+        fontSize: 14,
+        color: '#333',
+        cursor: 'pointer',
+      }}
+    >
+      <span>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {subtitle && <span style={{ fontSize: 12, color: '#999' }}>{subtitle}</span>}
+        <RightOutlined style={{ fontSize: 12, color: '#ccc' }} />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 移动端分类列表
+// ============================================================
+
+function MobileCategoryList({ categories }: { categories: Category[] }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {categories.map((cat) => (
+        <div
+          key={cat.id}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: 12,
+            background: '#fff',
+            borderRadius: 12,
+            gap: 12,
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              background: cat.color ? `${cat.color}20` : '#FFF8E1',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 16,
+              color: cat.color || '#F5A623',
+            }}
+          >
+            {cat.name.charAt(0)}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, color: '#333', fontWeight: 500 }}>{cat.name}</div>
+            <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
+              {cat.type === 'expense' ? '支出' : '收入'}
+              {cat.is_default ? ' · 系统预置' : ' · 自定义'}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
+// 移动端账户列表
+// ============================================================
+
+function MobileAccountList({ accounts }: { accounts: Account[] }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {accounts.map((acct) => (
+        <div
+          key={acct.id}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: 12,
+            background: '#fff',
+            borderRadius: 12,
+            gap: 12,
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              background: '#FFF8E1',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 16,
+              color: '#F5A623',
+            }}
+          >
+            {acct.name.charAt(0)}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, color: '#333', fontWeight: 500 }}>{acct.name}</div>
+            <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>{acct.type}</div>
+          </div>
+          <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>
+            ¥{acct.balance.toFixed(2)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
+// 移动端数据导出
+// ============================================================
+
+function MobileExportView() {
+  const { message } = App.useApp();
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  const handleExport = async (type: 'xlsx' | 'pdf' | 'csv' | 'json') => {
+    setExporting(type);
+    try {
+      const rows: ExportRow[] = await fetchAllTransactionsForExport();
+      switch (type) {
+        case 'xlsx': exportToExcel(rows); message.success('Excel 导出成功'); break;
+        case 'pdf': exportToPDF(rows); message.success('PDF 导出成功'); break;
+        case 'csv': exportToCSV(rows); message.success('CSV 导出成功'); break;
+        case 'json': exportToJSON(rows); message.success('JSON 导出成功'); break;
+      }
+    } catch {
+      message.error('导出失败，请稍后重试');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const btnStyle = (isPrimary?: boolean): React.CSSProperties => ({
+    border: 'none',
+    background: isPrimary ? '#FFD93D' : '#fff',
+    padding: '14px',
+    borderRadius: 12,
+    fontSize: 16,
+    fontWeight: 600,
+    color: '#333',
+    cursor: exporting ? 'wait' : 'pointer',
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <p style={{ color: '#666', fontSize: 13, margin: 0 }}>
+        导出所有交易明细。支持 Excel (.xlsx)、PDF、CSV 和 JSON 四种格式。
+      </p>
+      <button onClick={() => handleExport('xlsx')} style={btnStyle(true)} disabled={!!exporting}>
+        <DownloadOutlined />
+        {exporting === 'xlsx' ? '导出中…' : '导出 Excel (.xlsx)'}
+      </button>
+      <button onClick={() => handleExport('pdf')} style={btnStyle(false)} disabled={!!exporting}>
+        <DownloadOutlined />
+        {exporting === 'pdf' ? '导出中…' : '导出 PDF'}
+      </button>
+      <button onClick={() => handleExport('csv')} style={btnStyle(false)} disabled={!!exporting}>
+        <DownloadOutlined />
+        {exporting === 'csv' ? '导出中…' : '导出 CSV'}
+      </button>
+      <button onClick={() => handleExport('json')} style={btnStyle(false)} disabled={!!exporting}>
+        <DownloadOutlined />
+        {exporting === 'json' ? '导出中…' : '导出 JSON'}
+      </button>
+    </div>
+  );
+}
+
+// 工具函数已迁移至 src/services/exportService.ts

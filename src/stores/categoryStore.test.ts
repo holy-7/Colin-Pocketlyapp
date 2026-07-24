@@ -184,7 +184,7 @@ describe('categoryStore — deleteCategory', () => {
     const { deleteCategory } = useCategoryStore.getState();
     const result = await deleteCategory('cat-5');
 
-    expect(result.success).toBe(false);
-    expect(result.message).toBe('数据库权限不足');
+    // 乐观删除：本地总是成功（删除操作已入离线队列）
+    expect(result.success).toBe(true);
   });
 });

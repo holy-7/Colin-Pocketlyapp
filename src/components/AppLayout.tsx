@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, Drawer, Button } from 'antd';
+import { MenuOutlined } from '@ant-design/icons';
 import {
   HomeOutlined,
   UnorderedListOutlined,
@@ -7,6 +9,10 @@ import {
   CompassOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
+import { useResponsive } from '@/hooks/useResponsive';
+import BottomTabBar from '@/components/BottomTabBar';
+import SyncStatusBar from '@/components/SyncStatusBar';
+import MobileSplash from '@/components/MobileSplash';
 
 const { Sider, Content, Header } = Layout;
 
@@ -18,22 +24,25 @@ const menuItems = [
   { key: '/settings', icon: <SettingOutlined />, label: '设置' },
 ];
 
-export default function AppLayout() {
+function getSelectedKey(pathname: string): string {
+  const currentKey = '/' + pathname.split('/').filter(Boolean)[0] || '/';
+  return (
+    menuItems
+      .filter((item) => currentKey.startsWith(item.key))
+      .sort((a, b) => b.key.length - a.key.length)[0]?.key || '/'
+  );
+}
+
+// ==================== Desktop Layout ====================
+
+function DesktopLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-
-  const currentKey = '/' + location.pathname.split('/').filter(Boolean)[0] || '/';
-  const selectedKey = menuItems
-    .filter((item) => currentKey.startsWith(item.key))
-    .sort((a, b) => b.key.length - a.key.length)[0]?.key || '/';
+  const selectedKey = getSelectedKey(location.pathname);
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        theme="light"
-        width={200}
-        style={{ borderRight: '1px solid #f0f0f0' }}
-      >
+      <Sider theme="light" width={200} style={{ borderRight: '1px solid #f0f0f0' }}>
         <div
           style={{
             height: 64,
@@ -75,11 +84,59 @@ export default function AppLayout() {
           }}
         >
           {menuItems.find((m) => m.key === selectedKey)?.label || 'Colin记账'}
+          <SyncStatusBar />
         </Header>
-        <Content style={{ margin: 16, padding: 24, background: '#fff', borderRadius: 8, overflow: 'auto' }}>
+        <Content style={{ margin: 16, padding: 24, background: '#fff', borderRadius: 8, overflowY: 'auto', overflowX: 'hidden' }}>
           <Outlet />
         </Content>
       </Layout>
     </Layout>
   );
+}
+
+// ==================== Mobile Layout ====================
+
+function MobileLayout() {
+  const location = useLocation();
+  const [splashDone, setSplashDone] = useState(false);
+
+  // 记账页隐藏底部 TabBar（匹配原型设计）
+  const hideTabBar = location.pathname === '/mobile-record';
+
+  if (!splashDone) {
+    return <MobileSplash onComplete={() => setSplashDone(true)} />;
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        width: '100%',
+        maxWidth: 480,
+        margin: '0 auto',
+        background: '#F5F5F5',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative', width: '100%' }}>
+        <Outlet />
+      </div>
+      {!hideTabBar && <BottomTabBar />}
+    </div>
+  );
+}
+
+// ==================== AppLayout (adaptive) ====================
+
+export default function AppLayout() {
+  const { isMobile } = useResponsive();
+
+  // 平板端暂时使用桌面端布局（侧边栏本身支持折叠）
+  if (isMobile) {
+    return <MobileLayout />;
+  }
+  return <DesktopLayout />;
 }

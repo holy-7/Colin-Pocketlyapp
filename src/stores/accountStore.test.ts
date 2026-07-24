@@ -81,7 +81,7 @@ describe('accountStore — deleteAccount', () => {
     expect(accounts.find((a) => a.id === 'acc-1')).toBeUndefined();
   });
 
-  it('异常：删除失败返回 false 并设置错误', async () => {
+  it('异常：删除失败也不阻塞——乐观删除本地数据并离线入队', async () => {
     mockFrom.mockReturnValue(
       createMockChain({ data: null, error: { message: '数据库错误' } }),
     );
@@ -89,11 +89,10 @@ describe('accountStore — deleteAccount', () => {
     const { deleteAccount } = useAccountStore.getState();
     const result = await deleteAccount('acc-1');
 
-    expect(result).toBe(false);
-    const { error } = useAccountStore.getState();
-    expect(error).toBe('数据库错误');
-    // 账户未被删除
+    // 乐观删除：本地总是成功
+    expect(result).toBe(true);
+    // 本地账户已被移除
     const { accounts } = useAccountStore.getState();
-    expect(accounts).toHaveLength(3);
+    expect(accounts).toHaveLength(2);
   });
 });

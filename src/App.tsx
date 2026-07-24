@@ -4,9 +4,12 @@ import { Spin } from 'antd';
 import AppLayout from '@/components/AppLayout';
 import HomePage from '@/pages/HomePage';
 import RecordPage from '@/pages/RecordPage';
+import MobileRecordPage from '@/pages/MobileRecordPage';
+import MobileBudgetPage from '@/pages/MobileBudgetPage';
 import StatisticsPage from '@/pages/StatisticsPage';
 import DiscoverPage from '@/pages/DiscoverPage';
 import SettingsPage from '@/pages/SettingsPage';
+import { SyncProvider } from '@/services/syncContext';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
 import { useBudgetStore } from '@/stores/budgetStore';
@@ -35,16 +38,20 @@ export default function App() {
   }
 
   return (
-    <HashRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/transactions" element={<RecordPage />} />
-          <Route path="/report" element={<StatisticsPage />} />
-          <Route path="/discover" element={<DiscoverPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Route>
-      </Routes>
-    </HashRouter>
+    <SyncProvider>
+      <HashRouter>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/mobile-record" element={<MobileRecordPage />} />
+            <Route path="/transactions" element={<RecordPage />} />
+            <Route path="/report" element={<StatisticsPage />} />
+            <Route path="/discover" element={<DiscoverPage />} />
+            <Route path="/budgets" element={<MobileBudgetPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+        </Routes>
+      </HashRouter>
+    </SyncProvider>
   );
 }

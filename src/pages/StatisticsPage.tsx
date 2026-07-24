@@ -6,7 +6,9 @@ import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 
 dayjs.extend(weekOfYear);
+import { useResponsive } from '@/hooks/useResponsive';
 import { useTransactionStore } from '@/stores/transactionStore';
+import MobileHeader from '@/components/MobileHeader';
 import type { Transaction, CategorySummary, DailyTrend, TransactionType } from '@/types';
 
 // ============================================================
@@ -146,6 +148,7 @@ function getPeriodOptions(mode: 'week' | 'month' | 'year'): PeriodOption[] {
 // ============================================================
 
 export default function StatisticsPage() {
+  const { isMobile } = useResponsive();
   const [transactionType, setTransactionType] = useState<TransactionType>('expense');
   const [periodMode, setPeriodMode] = useState<'week' | 'month' | 'year'>('month');
   const [periodOffset, setPeriodOffset] = useState(0);
@@ -211,6 +214,31 @@ export default function StatisticsPage() {
   const typeColor = isExpense ? EXPENSE_COLOR : INCOME_COLOR;
   const typeName = isExpense ? '支出' : '收入';
 
+  // ==================== Mobile ====================
+  if (isMobile) {
+    return (
+      <MobileStatsView
+        transactionType={transactionType}
+        setTransactionType={setTransactionType}
+        periodMode={periodMode}
+        setPeriodMode={setPeriodMode}
+        periodOffset={periodOffset}
+        setPeriodOffset={setPeriodOffset}
+        loading={loading}
+        categoryData={categoryData}
+        dailyData={dailyData}
+        stats={stats}
+        prevStats={prevStats}
+        chartKey={chartKey}
+        currentPeriod={currentPeriod}
+        periodOptions={periodOptions}
+        typeName={typeName}
+        isExpense={isExpense}
+      />
+    );
+  }
+
+  // ==================== Desktop (unchanged) ====================
   return (
     <Spin spinning={loading}>
       {/* ======== 顶部导航区 ======== */}
@@ -319,8 +347,8 @@ export default function StatisticsPage() {
       ) : (
         <>
           {/* KPI 卡片 */}
-          <Row gutter={16} style={{ marginBottom: 20 }}>
-            <Col span={12}>
+          <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+            <Col xs={24} sm={12}>
               <Card style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>
                   {periodMode === 'week' ? '本周' : periodMode === 'month' ? '本月' : '本年'}
@@ -338,7 +366,7 @@ export default function StatisticsPage() {
                 )}
               </Card>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Card style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>日均{typeName}</div>
                 <div style={{ fontSize: 28, fontWeight: 700, color: typeColor, marginBottom: 4 }}>
@@ -479,6 +507,266 @@ function CompareBadge({ current, previous, isExpense }: CompareBadgeProps) {
     <span style={{ fontSize: 12, color }}>
       <Arrow style={{ fontSize: 11 }} /> {pct.toFixed(1)}% 较上期
     </span>
+  );
+}
+
+// ============================================================
+// 移动端统计视图
+// ============================================================
+
+interface MobileStatsViewProps {
+  transactionType: TransactionType;
+  setTransactionType: (t: TransactionType) => void;
+  periodMode: 'week' | 'month' | 'year';
+  setPeriodMode: (m: 'week' | 'month' | 'year') => void;
+  periodOffset: number;
+  setPeriodOffset: (o: number) => void;
+  loading: boolean;
+  categoryData: CategorySummary[];
+  dailyData: DailyTrend[];
+  stats: { totalAmount: number; dailyAverage: number };
+  prevStats: { totalAmount: number; dailyAverage: number } | null;
+  chartKey: number;
+  currentPeriod: PeriodRange;
+  periodOptions: PeriodOption[];
+  typeName: string;
+  isExpense: boolean;
+}
+
+function MobileStatsView({
+  transactionType, setTransactionType,
+  periodMode, setPeriodMode,
+  periodOffset, setPeriodOffset,
+  loading, categoryData, dailyData,
+  stats, chartKey, currentPeriod, periodOptions, typeName, isExpense,
+}: MobileStatsViewProps) {
+  const periodScrollRef = useRef<HTMLDivElement>(null);
+  const activeItemRef = useRef<HTMLButtonElement>(null);
+
+  // 自动滚动激活项到可视区
+  useEffect(() => {
+    if (activeItemRef.current && periodScrollRef.current) {
+      activeItemRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [periodOffset, periodMode]);
+
+  // 年模式下只显示今年
+  const visiblePeriodOptions = periodMode === 'year'
+    ? periodOptions.filter((o) => o.offset === 0)
+    : periodOptions;
+
+  return (
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#F5F5F5',
+        overflow: 'hidden',
+      }}
+    >
+      {/* 黄色头部 */}
+      <MobileHeader style={{ padding: '12px 16px 16px' }}>
+        {/* 类型标题 */}
+        <div
+          onClick={() => setTransactionType(isExpense ? 'income' : 'expense')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            marginBottom: 16,
+            cursor: 'pointer',
+          }}
+        >
+          <span style={{ fontSize: 17, fontWeight: 600, color: '#333' }}>{typeName}</span>
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+            <path d="M7 10l5 5 5-5z" />
+          </svg>
+        </div>
+
+        {/* 周/月/年 切换 */}
+        <div
+          style={{
+            display: 'flex',
+            background: 'rgba(0,0,0,0.1)',
+            borderRadius: 8,
+            overflow: 'hidden',
+          }}
+        >
+          {(['week', 'month', 'year'] as const).map((mode) => {
+            const labels = { week: '周', month: '月', year: '年' };
+            const active = periodMode === mode;
+            return (
+              <button
+                key={mode}
+                onClick={() => setPeriodMode(mode)}
+                style={{
+                  flex: 1,
+                  textAlign: 'center',
+                  padding: '8px 0',
+                  fontSize: 14,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: active ? '#333' : 'transparent',
+                  color: active ? '#FFD93D' : '#333',
+                  borderRadius: active ? 8 : 0,
+                  fontWeight: active ? 600 : 400,
+                  outline: 'none',
+                }}
+              >
+                {labels[mode]}
+              </button>
+            );
+          })}
+        </div>
+      </MobileHeader>
+
+      {/* 内容区 */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', width: '100%', touchAction: 'pan-y', padding: '12px 16px 80px 12px' }}>
+        {/* 周期选择 — 左右滑动切换，无滚动条 */}
+        <div
+          ref={periodScrollRef}
+          className="stats-period-scroll"
+          style={{
+            display: 'flex',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            whiteSpace: 'nowrap',
+            padding: '12px 4px',
+            gap: 0,
+            touchAction: 'pan-x',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none' as const,
+          }}
+        >
+          {visiblePeriodOptions.map((opt) => (
+            <button
+              key={opt.offset}
+              ref={opt.offset === periodOffset ? activeItemRef : undefined}
+              onClick={() => setPeriodOffset(opt.offset)}
+              style={{
+                flexShrink: 0,
+                padding: '6px 14px',
+                border: 'none',
+                borderBottom: opt.offset === periodOffset ? '3px solid #FFD93D' : '3px solid transparent',
+                background: 'transparent',
+                color: opt.offset === periodOffset ? '#333' : '#999',
+                fontWeight: opt.offset === periodOffset ? 600 : 400,
+                fontSize: 14,
+                cursor: 'pointer',
+                outline: 'none',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+                fontFamily: 'inherit',
+                touchAction: 'manipulation',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 汇总行 */}
+        <div style={{ display: 'flex', gap: 24, padding: '4px 4px 12px', fontSize: 13, color: '#666' }}>
+          <span>
+            总{typeName}：<b>¥{stats.totalAmount.toFixed(2)}</b>
+          </span>
+          <span>
+            平均值：<b>¥{stats.dailyAverage.toFixed(2)}</b>
+          </span>
+        </div>
+
+        {/* 加载态 / 空态 */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 60, color: '#999' }}>加载中...</div>
+        ) : dailyData.length === 0 && categoryData.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 60, color: '#999' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+            <div style={{ fontSize: 14 }}>{currentPeriod.label}暂无{typeName}记录</div>
+          </div>
+        ) : (
+          <>
+            {/* 折线图 */}
+            <div style={{ height: 180, marginBottom: 16 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart key={chartKey} data={dailyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#999' }} axisLine={false} />
+                  <YAxis hide />
+                  <Tooltip
+                    formatter={(value: number) => [`¥${value.toFixed(2)}`, typeName]}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey={isExpense ? 'expense' : 'income'}
+                    stroke="#FFD93D"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#FFD93D' }}
+                    activeDot={{ r: 5 }}
+                    name={typeName}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* 分类排行榜 */}
+            <div style={{ background: '#fff', borderRadius: 12, padding: 14 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#333', marginBottom: 14 }}>
+                {typeName}排行榜
+              </h3>
+              {categoryData.map((item) => (
+                <div key={item.category_id} style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: '#FFF8E1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 16,
+                      marginRight: 10,
+                      color: item.category_color || '#F5A623',
+                    }}
+                  >
+                    {item.category_name.charAt(0)}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 14, color: '#333' }}>{item.category_name}</span>
+                      <span style={{ fontSize: 12, color: '#999' }}>{item.percentage.toFixed(1)}%</span>
+                    </div>
+                    <div style={{ height: 8, background: '#f0f0f0', borderRadius: 4, overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          height: '100%',
+                          width: `${Math.min(item.percentage, 100)}%`,
+                          background: '#FFD93D',
+                          borderRadius: 4,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      color: '#333',
+                      marginLeft: 10,
+                      minWidth: 40,
+                      textAlign: 'right',
+                    }}
+                  >
+                    ¥{item.amount.toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

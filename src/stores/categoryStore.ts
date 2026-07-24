@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { syncManager } from '@/services/syncManager';
+import { getCachedRecords, cacheRecords } from '@/db/database';
 import type { Category, CategoryKind } from '@/types';
 
 interface CategoryStore {
@@ -24,11 +26,20 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
   error: null,
 
   fetchCategories: async (force = false) => {
-    // 已初始化且非强制刷新，则跳过（避免页面切换时重复触发全局 loading）
     const { initialized, loading } = get();
     if (initialized && !force && !loading) return;
 
     set({ loading: true, error: null });
+
+    // 本地缓存优先：先从 IndexedDB 加载（瞬时渲染）
+    try {
+      const cached = await getCachedRecords<Category>('categories');
+      if (cached.length > 0) {
+        set({ categories: cached, initialized: true });
+      }
+    } catch { /* 缓存不可用时忽略 */ }
+
+    // 后台从 Supabase 获取最新数据
     const { data, error } = await supabase
       .from('categories')
       .select('*')
@@ -39,7 +50,14 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       set({ error: error.message, loading: false });
       return;
     }
-    set({ categories: data as Category[], loading: false, initialized: true });
+
+    if (data) {
+      set({ categories: data as Category[], loading: false, initialized: true });
+      // 更新本地缓存
+      try {
+        await cacheRecords('categories', data as Category[]);
+      } catch { /* 缓存写入失败不影响功能 */ }
+    }
   },
 
   addCategory: async (data) => {
@@ -56,9 +74,19 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       .single();
 
     if (error) {
-      set({ error: error.message });
-      return null;
+      // 离线降级：通过 SyncManager 入队
+      const tempId = crypto.randomUUID();
+      set((state) => ({
+        categories: [...state.categories, { id: tempId, ...data, is_default: false, created_at: new Date().toISOString(), parent_id: null } as Category],
+      }));
+      await syncManager.writeOptimistic('categories', 'INSERT', tempId, {
+        id: tempId, name: data.name, type: data.type,
+        icon: data.icon || null, color: data.color || null, is_default: false,
+        created_at: new Date().toISOString(),
+      });
+      return { id: tempId, ...data, is_default: false } as Category;
     }
+
     set((state) => ({ categories: [...state.categories, created as Category] }));
     return created as Category;
   },
@@ -70,9 +98,10 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       .eq('id', id);
 
     if (error) {
-      set({ error: error.message });
-      return;
+      // 离线降级
+      await syncManager.writeOptimistic('categories', 'UPDATE', id, { id, ...data });
     }
+
     set((state) => ({
       categories: state.categories.map((c) => (c.id === id ? { ...c, ...data } : c)),
     }));
@@ -98,8 +127,7 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
 
     const { error } = await supabase.from('categories').delete().eq('id', id);
     if (error) {
-      set({ error: error.message });
-      return { success: false, message: error.message };
+      await syncManager.writeOptimistic('categories', 'DELETE', id);
     }
 
     set((state) => ({ categories: state.categories.filter((c) => c.id !== id) }));

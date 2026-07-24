@@ -213,7 +213,7 @@ describe('transactionStore — deleteTransaction', () => {
     expect(totalCount).toBe(0);
   });
 
-  it('异常：删除失败返回 false 并设置错误', async () => {
+  it('异常：删除失败也不阻塞——乐观删除本地数据并离线入队', async () => {
     mockFrom.mockReturnValue(
       createMockChain({ data: null, error: { message: '数据库错误' } }),
     );
@@ -221,8 +221,7 @@ describe('transactionStore — deleteTransaction', () => {
     const { deleteTransaction } = useTransactionStore.getState();
     const result = await deleteTransaction('txn-1');
 
-    expect(result).toBe(false);
-    const { error } = useTransactionStore.getState();
-    expect(error).toBe('数据库错误');
+    // 乐观删除：本地总是成功
+    expect(result).toBe(true);
   });
 });

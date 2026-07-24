@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 
-// Supabase 项目配置
-const SUPABASE_URL = 'https://hawungoiwtnbjmqqenpi.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_XWpshR1WXwisy4unHXlq2g_RQ8FQi_X';
+// Supabase 项目配置（通过 VITE_ 环境变量注入，见 .env / .env.example）
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   realtime: {

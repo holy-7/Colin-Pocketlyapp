@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card, Row, Col, Table, Button, Modal, Form, Select, InputNumber,
   Popconfirm, Tag, Progress, Alert, Empty, Spin, Statistic,
@@ -6,13 +7,22 @@ import {
 import {
   PlusOutlined, DeleteOutlined, WalletOutlined,
   RiseOutlined, FallOutlined, FireOutlined, ThunderboltOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import BudgetProgress from '@/components/BudgetProgress';
+import MobileHeader from '@/components/MobileHeader';
+import MobileCard from '@/components/MobileCard';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useBudgetStore } from '@/stores/budgetStore';
 import { useTransactionStore } from '@/stores/transactionStore';
 import { useCategoryStore } from '@/stores/categoryStore';
+import {
+  MOBILE_PRIMARY, MOBILE_CARD_BG, MOBILE_TEXT_PRIMARY,
+  MOBILE_TEXT_TERTIARY, RING_RADIUS, RING_CIRCUMFERENCE,
+  getSpentPercentage,
+} from '@/theme/mobileTokens';
 import type { Budget, Transaction } from '@/types';
 
 // ============================================================
@@ -28,12 +38,345 @@ const COLORS = [
 // ============================================================
 
 export default function DiscoverPage() {
+  const { isMobile } = useResponsive();
+
+  if (isMobile) {
+    return <MobileDiscoverView />;
+  }
+
   return (
     <div>
       <BudgetSection />
       <div style={{ marginTop: 32 }}>
         <InsightsSection />
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 移动端发现页
+// ============================================================
+
+function MobileDiscoverView() {
+  const navigate = useNavigate();
+  const { budgets, fetchBudgets, getTotalBudget, setBudget } = useBudgetStore();
+  const { categories } = useCategoryStore();
+  const { getTransactionsByDateRange } = useTransactionStore();
+  const [totalSpent, setTotalSpent] = useState(0);
+  const [monthIncome, setMonthIncome] = useState(0);
+  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
+  const [budgetForm] = Form.useForm();
+
+  const now = dayjs();
+  const monthStr = now.format('M');
+  const monthStart = now.startOf('month').format('YYYY-MM-DD');
+  const monthEnd = now.endOf('month').format('YYYY-MM-DD');
+
+  useEffect(() => {
+    fetchBudgets();
+  }, [fetchBudgets]);
+
+  useEffect(() => {
+    (async () => {
+      const txs = await getTransactionsByDateRange(monthStart, monthEnd);
+      const expenses = txs.filter((t) => t.type === 'expense');
+      const incomes = txs.filter((t) => t.type === 'income');
+      setTotalSpent(expenses.reduce((s, t) => s + t.amount, 0));
+      setMonthIncome(incomes.reduce((s, t) => s + t.amount, 0));
+    })();
+  }, [monthStart, monthEnd, getTransactionsByDateRange]);
+
+  const totalBudget = getTotalBudget();
+  const balance = monthIncome - totalSpent;
+  const budgetRemaining = totalBudget - totalSpent;
+  const budgetPct = getSpentPercentage(totalSpent, totalBudget);
+  const remainingPct = totalBudget > 0 ? Math.max(100 - budgetPct, 0) : 100;
+
+  const strokeOffset = RING_CIRCUMFERENCE * (1 - budgetPct / 100);
+
+  const handleBudgetSubmit = async (values: { category_id?: string; amount: number }) => {
+    await setBudget({
+      category_id: values.category_id || undefined,
+      amount: values.amount,
+    });
+    setBudgetModalOpen(false);
+  };
+
+  const expenseCategories = categories.filter((c) => c.type === 'expense');
+
+  return (
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#F5F5F5',
+        overflow: 'hidden',
+      }}
+    >
+      {/* 黄色头部 */}
+      <MobileHeader
+        style={{
+          height: 56,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <span style={{ fontSize: 17, fontWeight: 600, color: '#333' }}>发现</span>
+      </MobileHeader>
+
+      {/* 内容区 */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', width: '100%', padding: '12px 16px 80px 12px' }}>
+        {/* 账单摘要卡片 */}
+        <MobileCard
+          title="账单"
+          extra={
+            <RightOutlined
+              style={{ fontSize: 12, color: '#999' }}
+              onClick={() => navigate('/transactions')}
+            />
+          }
+          onClick={() => navigate('/report')}
+        >
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginRight: 20 }}>
+              <span style={{ fontSize: 32, fontWeight: 700, color: '#333' }}>{monthStr}</span>
+              <span style={{ fontSize: 14, color: '#666' }}>月</span>
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>收入</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#333' }}>
+                ¥{monthIncome.toFixed(2)}
+              </span>
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>支出</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#333' }}>
+                ¥{totalSpent.toFixed(2)}
+              </span>
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>结余</span>
+              <span
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: balance >= 0 ? '#333' : '#E74C3C',
+                }}
+              >
+                ¥{balance.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </MobileCard>
+
+        {/* 预算环形图卡片 */}
+        <MobileCard>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#333' }}>{monthStr}月总预算</span>
+            <button
+              onClick={() => {
+                setBudgetModalOpen(true);
+              }}
+              style={{
+                background: '#FFD93D',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: 16,
+                fontSize: 12,
+                color: '#333',
+                cursor: 'pointer',
+              }}
+            >
+              + 设置预算
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginTop: 10 }}>
+            {/* 环形SVG */}
+            <div style={{ position: 'relative', width: 90, height: 90 }}>
+              <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                <path
+                  fill="none"
+                  stroke="#f0f0f0"
+                  strokeWidth="3"
+                  d={`M18 2.0845 a ${RING_RADIUS} ${RING_RADIUS} 0 0 1 0 ${RING_CIRCUMFERENCE / Math.PI} a ${RING_RADIUS} ${RING_RADIUS} 0 0 1 0 -${RING_CIRCUMFERENCE / Math.PI}`}
+                />
+                <path
+                  fill="none"
+                  stroke="#FFD93D"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={`${budgetPct}, 100`}
+                  d={`M18 2.0845 a ${RING_RADIUS} ${RING_RADIUS} 0 0 1 0 ${RING_CIRCUMFERENCE / Math.PI} a ${RING_RADIUS} ${RING_RADIUS} 0 0 1 0 -${RING_CIRCUMFERENCE / Math.PI}`}
+                />
+              </svg>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  textAlign: 'center',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: 18, fontWeight: 700, color: '#333' }}>
+                  {remainingPct}%
+                </span>
+                <span style={{ fontSize: 11, color: '#999' }}>剩余</span>
+              </div>
+            </div>
+
+            {/* 预算详情 */}
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#999' }}>
+                <span>剩余预算</span>
+                <span style={{ color: budgetRemaining >= 0 ? '#333' : '#E74C3C' }}>
+                  ¥{budgetRemaining.toFixed(2)}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#999' }}>
+                <span>本月预算</span>
+                <span>¥{totalBudget.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#999' }}>
+                <span>本月支出</span>
+                <span>¥{totalSpent.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </MobileCard>
+
+        {/* 功能入口 */}
+        <MobileCard title="常用功能">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '16px 8px',
+            }}
+          >
+            <FunctionItem
+              label="预算管理"
+              icon="💳"
+              onClick={() => navigate('/budgets')}
+            />
+            <FunctionItem
+              label="分类管理"
+              icon="🏷️"
+              onClick={() => navigate('/settings?tab=categories')}
+            />
+            <FunctionItem
+              label="账户管理"
+              icon="🏦"
+              onClick={() => navigate('/settings?tab=accounts')}
+            />
+            <FunctionItem
+              label="数据导出"
+              icon="📤"
+              onClick={() => navigate('/settings?tab=export')}
+            />
+            <FunctionItem
+              label="记账提醒"
+              icon="⏰"
+              onClick={() => {}}
+            />
+            <FunctionItem
+              label="消费分析"
+              icon="📈"
+              onClick={() => navigate('/report')}
+            />
+            <FunctionItem
+              label="账单明细"
+              icon="📋"
+              onClick={() => navigate('/transactions')}
+            />
+            <FunctionItem
+              label="更多功能"
+              icon="⋯"
+              onClick={() => {}}
+            />
+          </div>
+        </MobileCard>
+      </div>
+
+      {/* 预算设置弹窗 */}
+      <Modal
+        title="设置预算"
+        open={budgetModalOpen}
+        onOk={() => budgetForm.submit()}
+        onCancel={() => setBudgetModalOpen(false)}
+        destroyOnHidden
+      >
+        <Form
+          form={budgetForm}
+          layout="vertical"
+          onFinish={handleBudgetSubmit}
+        >
+          <Form.Item name="category_id" label="分类（留空为总预算）">
+            <Select
+              allowClear
+              placeholder="全部分类"
+              options={expenseCategories.map((c) => ({
+                label: c.name,
+                value: c.id,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item
+            name="amount"
+            label="月度预算金额"
+            rules={[{ required: true, message: '请输入预算金额' }]}
+          >
+            <InputNumber
+              prefix="¥"
+              min={0}
+              max={99999999}
+              precision={2}
+              style={{ width: '100%' }}
+              placeholder="0.00"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+}
+
+// ============================================================
+// 移动端功能入口图标
+// ============================================================
+
+function FunctionItem({ label, icon, onClick }: { label: string; icon: string; onClick: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 8,
+        cursor: 'pointer',
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          background: '#FFF8E1',
+          color: '#F5A623',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 18,
+          fontWeight: 600,
+        }}
+      >
+        {icon}
+      </div>
+      <span style={{ fontSize: 12, color: '#666' }}>{label}</span>
     </div>
   );
 }
@@ -183,8 +526,8 @@ function BudgetSection() {
       </div>
 
       {/* 概览卡片 */}
-      <Row gutter={16} style={{ marginBottom: 20 }}>
-        <Col span={8}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+        <Col xs={24} sm={8}>
           <Card>
             <Statistic
               title="月度总预算"
@@ -195,7 +538,7 @@ function BudgetSection() {
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={8}>
           <Card>
             <Statistic
               title="本月已支出"
@@ -206,7 +549,7 @@ function BudgetSection() {
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={8}>
           <Card>
             <Statistic
               title="剩余可花"
@@ -379,9 +722,9 @@ function InsightsSection() {
               </div>
             )}
 
-            <Row gutter={16} style={{ marginBottom: 20 }}>
+            <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
               {/* 消费排行榜 */}
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Card title={<span><RiseOutlined style={{ marginRight: 6, color: '#E74C3C' }} />消费排行 Top 3</span>}>
                   {insights.topCategories.length === 0 ? (
                     <Empty description="本月暂无支出" />
@@ -416,7 +759,7 @@ function InsightsSection() {
               </Col>
 
               {/* 日均 + 高消费日 */}
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Card title={<span><FireOutlined style={{ marginRight: 6, color: '#F39C12' }} />消费趋势</span>}>
                   {/* 日均对比 */}
                   <div style={{ marginBottom: 20 }}>

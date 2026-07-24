@@ -6,6 +6,7 @@ import type { InputRef } from 'antd';
 import dayjs from 'dayjs';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
+import { useResponsive } from '@/hooks/useResponsive';
 import type { TransactionFormData, TransactionType } from '@/types';
 import { AMOUNT_REGEX } from '@/types';
 
@@ -31,6 +32,7 @@ export default function TransactionForm({
   const categories = useCategoryStore((s) => s.categories);
   const accounts = useAccountStore((s) => s.accounts);
   const transactionType: TransactionType = Form.useWatch('type', form) || 'expense';
+  const { isMobile } = useResponsive();
 
   const filteredCategories = categories.filter((c) => c.type === transactionType);
 
@@ -88,7 +90,8 @@ export default function TransactionForm({
       onOk={() => form.submit()}
       confirmLoading={loading}
       destroyOnHidden
-      width={480}
+      width={isMobile ? '100%' : 480}
+      style={isMobile ? { maxWidth: '100vw', margin: 0, top: 0 } : undefined}
     >
       <Form
         form={form}
