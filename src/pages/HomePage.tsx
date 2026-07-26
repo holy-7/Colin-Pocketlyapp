@@ -8,6 +8,7 @@ import BudgetProgress from '@/components/BudgetProgress';
 import MobileHeader from '@/components/MobileHeader';
 import MonthPickerSheet from '@/components/MonthPickerSheet';
 import { useResponsive } from '@/hooks/useResponsive';
+import { getCategoryIcon } from '@/utils/categoryIcons';
 import { useTransactionStore } from '@/stores/transactionStore';
 import { useBudgetStore } from '@/stores/budgetStore';
 import { useCategoryStore } from '@/stores/categoryStore';
@@ -174,7 +175,7 @@ export default function HomePage() {
                           fontSize: 18,
                         }}
                       >
-                        {item.type === 'expense' ? '💸' : '💰'}
+                                                {getCategoryIcon(cat?.name || '', cat?.color || '#ddd', 18) || (item.type === 'expense' ? '支' : '收')}
                       </span>
                     }
                     title={
@@ -530,51 +531,38 @@ function MobileHomePage({ transactions, categories, loading, onAdd, onUpdate, on
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
+            gridTemplateColumns: 'auto 1fr auto',
             gap: '6px 8px',
             marginTop: 12,
             alignItems: 'end',
           }}
         >
-          <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)', textAlign: 'left' }}>{yearStr}</span>
-          <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)', textAlign: 'right' }}>收入</span>
-          <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)', textAlign: 'right' }}>支出</span>
+          <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)' }}>{yearStr}</span>
+          <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)' }}>收入</span>
+          <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)', paddingRight: 10 }}>支出</span>
 
           {/* 月份选择器 */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-            <span style={{ fontSize: 38, fontWeight: 700, color: '#333', lineHeight: 1, letterSpacing: -1 }}>
-              {selectedMonth.format('MM')}
-            </span>
-            <span style={{ fontSize: 16, fontWeight: 600, color: '#333', marginLeft: 2 }}>月</span>
-            <span
-              onClick={() => setMonthPickerOpen(true)}
-              style={{ cursor: 'pointer', padding: '4px 2px', display: 'flex', alignItems: 'flex-end' }}
-            >
-              <svg width="10" height="6" viewBox="0 0 10 6">
-                <path d="M0 0l5 6 5-6z" fill="#999" />
-              </svg>
-            </span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+              <span style={{ fontSize: 38, fontWeight: 700, color: '#333', lineHeight: 1, letterSpacing: -1 }}>
+                {selectedMonth.format('MM')}
+              </span>
+              <span style={{ fontSize: 16, fontWeight: 600, color: '#333', marginLeft: 2 }}>月</span>
+              <span
+                onClick={() => setMonthPickerOpen(true)}
+                style={{ cursor: 'pointer', padding: '4px 2px', display: 'flex', alignItems: 'flex-end' }}
+              >
+                <svg width="10" height="6" viewBox="0 0 10 6">
+                  <path d="M0 0l5 6 5-6z" fill="#999" />
+                </svg>
+              </span>
+            </div>
+            <span style={{ fontSize: 20, fontWeight: 300, color: 'rgba(0,0,0,0.15)' }}>|</span>
           </div>
-          <span
-            style={{
-              fontSize: 20,
-              fontWeight: 700,
-              color: MOBILE_INCOME_COLOR,
-              textAlign: 'right',
-              fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
-            }}
-          >
+          <span style={{ fontSize: 20, fontWeight: 700, color: MOBILE_INCOME_COLOR, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
             {monthIncome.toFixed(2)}
           </span>
-          <span
-            style={{
-              fontSize: 20,
-              fontWeight: 700,
-              color: '#333',
-              textAlign: 'right',
-              fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
-            }}
-          >
+          <span style={{ fontSize: 20, fontWeight: 700, color: MOBILE_EXPENSE_COLOR, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingRight: 10 }}>
             {monthExpense.toFixed(2)}
           </span>
         </div>
@@ -613,16 +601,6 @@ function MobileHomePage({ transactions, categories, loading, onAdd, onUpdate, on
               </svg>
             }
             onClick={() => navigate('/discover')}
-          />
-          <QuickAction
-            label="记一笔"
-            icon={
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-            }
-            onClick={() => setFormOpen(true)}
           />
           <QuickAction
             label="统计"
@@ -904,7 +882,7 @@ function SwipeableTransactionItem({
             flexShrink: 0,
           }}
         >
-          {catName.charAt(0)}
+          {getCategoryIcon(catName, catColor || '#F5A623', 22) || catName.charAt(0)}
         </div>
 
         {/* 分类名 + 备注 */}

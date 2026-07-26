@@ -8,7 +8,9 @@ import MobileRecordPage from '@/pages/MobileRecordPage';
 import MobileBudgetPage from '@/pages/MobileBudgetPage';
 import StatisticsPage from '@/pages/StatisticsPage';
 import DiscoverPage from '@/pages/DiscoverPage';
+import AIChatPage from '@/pages/AIChatPage';
 import SettingsPage from '@/pages/SettingsPage';
+
 import { SyncProvider } from '@/services/syncContext';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
@@ -48,7 +50,9 @@ export default function App() {
             <Route path="/report" element={<StatisticsPage />} />
             <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/budgets" element={<MobileBudgetPage />} />
+            <Route path="/ai-chat" element={<AIChatPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+
           </Route>
         </Routes>
       </HashRouter>

@@ -14,10 +14,13 @@ import dayjs from 'dayjs';
 import BudgetProgress from '@/components/BudgetProgress';
 import MobileHeader from '@/components/MobileHeader';
 import MobileCard from '@/components/MobileCard';
+import ChatMessage from '@/components/ChatMessage';
+import ChatInput from '@/components/ChatInput';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useBudgetStore } from '@/stores/budgetStore';
 import { useTransactionStore } from '@/stores/transactionStore';
 import { useCategoryStore } from '@/stores/categoryStore';
+import { useChatStore } from '@/stores/chatStore';
 import {
   MOBILE_PRIMARY, MOBILE_CARD_BG, MOBILE_TEXT_PRIMARY,
   MOBILE_TEXT_TERTIARY, RING_RADIUS, RING_CIRCUMFERENCE,
@@ -39,6 +42,8 @@ const COLORS = [
 
 export default function DiscoverPage() {
   const { isMobile } = useResponsive();
+  const [desktopChatOpen, setDesktopChatOpen] = useState(false);
+  const { messages, loading, streaming, send, clearHistory } = useChatStore();
 
   if (isMobile) {
     return <MobileDiscoverView />;
@@ -46,10 +51,43 @@ export default function DiscoverPage() {
 
   return (
     <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <Button icon={<span>🤖</span>} onClick={() => setDesktopChatOpen(true)}>
+          AI 助手
+        </Button>
+      </div>
       <BudgetSection />
       <div style={{ marginTop: 32 }}>
         <InsightsSection />
       </div>
+
+      {/* AI 助手弹窗（桌面端） */}
+      <Modal
+        title="🤖 AI 财务助手"
+        open={desktopChatOpen}
+        onCancel={() => setDesktopChatOpen(false)}
+        width={680}
+        footer={null}
+        destroyOnHidden={false}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', height: '60vh' }}>
+          <div style={{ flex: 1, overflow: 'auto', marginBottom: 12 }}>
+            {messages.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#999', marginTop: 40 }}>
+                问我这个月的财务状况吧
+              </div>
+            ) : (
+              messages.map((msg, i) => <ChatMessage key={i} message={msg} />)
+            )}
+            {loading && streaming && (
+              <ChatMessage message={{ role: 'assistant', content: streaming }} streaming />
+            )}
+          </div>
+          <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 8 }}>
+            <ChatInput onSend={send} loading={loading} />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -66,7 +104,9 @@ function MobileDiscoverView() {
   const [totalSpent, setTotalSpent] = useState(0);
   const [monthIncome, setMonthIncome] = useState(0);
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [budgetForm] = Form.useForm();
+  const { messages, loading, streaming, send, clearHistory } = useChatStore();
 
   const now = dayjs();
   const monthStr = now.format('M');
@@ -278,9 +318,9 @@ function MobileDiscoverView() {
               onClick={() => navigate('/settings?tab=export')}
             />
             <FunctionItem
-              label="记账提醒"
-              icon="⏰"
-              onClick={() => {}}
+              label="AI助手"
+              icon="🤖"
+              onClick={() => setChatOpen(true)}
             />
             <FunctionItem
               label="消费分析"
@@ -300,6 +340,37 @@ function MobileDiscoverView() {
           </div>
         </MobileCard>
       </div>
+
+      {/* AI 助手全屏（移动端） */}
+      {chatOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1100, background: '#fff',
+          display: 'flex', flexDirection: 'column',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 16px', borderBottom: '1px solid #f0f0f0',
+          }}>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>🤖 AI 财务助手</span>
+            <Button type="text" onClick={() => setChatOpen(false)}>✕</Button>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
+            {messages.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#999', marginTop: 40 }}>
+                问我这个月的财务状况吧
+              </div>
+            ) : (
+              messages.map((msg, i) => <ChatMessage key={i} message={msg} />)
+            )}
+            {loading && streaming && (
+              <ChatMessage message={{ role: 'assistant', content: streaming }} streaming />
+            )}
+          </div>
+          <div style={{ borderTop: '1px solid #f0f0f0', padding: '8px 12px' }}>
+            <ChatInput onSend={send} loading={loading} isMobile={true} quickQuestions={['这个月花了多少钱？', '预算还剩多少？']} />
+          </div>
+        </div>
+      )}
 
       {/* 预算设置弹窗 */}
       <Modal

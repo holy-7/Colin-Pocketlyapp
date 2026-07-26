@@ -8,6 +8,7 @@ import {
   PieChartOutlined,
   CompassOutlined,
   SettingOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import { useResponsive } from '@/hooks/useResponsive';
 import BottomTabBar from '@/components/BottomTabBar';
@@ -21,6 +22,7 @@ const menuItems = [
   { key: '/transactions', icon: <UnorderedListOutlined />, label: '明细' },
   { key: '/report', icon: <PieChartOutlined />, label: '图表' },
   { key: '/discover', icon: <CompassOutlined />, label: '发现' },
+  { key: '/ai-chat', icon: <RobotOutlined />, label: 'AI助手' },
   { key: '/settings', icon: <SettingOutlined />, label: '设置' },
 ];
 

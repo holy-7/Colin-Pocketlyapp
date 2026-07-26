@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import MobileHeader from '@/components/MobileHeader';
 import DatePickerSheet from '@/components/DatePickerSheet';
+import { getCategoryIcon } from '@/utils/categoryIcons';
 import { useTransactionStore } from '@/stores/transactionStore';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
@@ -219,7 +220,7 @@ export default function MobileRecordPage() {
                     color: selectedCategory?.id === cat.id ? '#333' : cat.color || '#666',
                   }}
                 >
-                  {cat.name.charAt(0)}
+                  {getCategoryIcon(cat.name, cat.color || '#666', 26) || cat.name.charAt(0)}
                 </div>
                 <span style={{ fontSize: 12, color: '#666' }}>{cat.name}</span>
               </button>

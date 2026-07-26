@@ -9,6 +9,7 @@ dayjs.extend(weekOfYear);
 import { useResponsive } from '@/hooks/useResponsive';
 import { useTransactionStore } from '@/stores/transactionStore';
 import MobileHeader from '@/components/MobileHeader';
+import { getCategoryIcon } from '@/utils/categoryIcons';
 import type { Transaction, CategorySummary, DailyTrend, TransactionType } from '@/types';
 
 // ============================================================
@@ -438,7 +439,7 @@ export default function StatisticsPage() {
                             flexShrink: 0,
                           }}
                         >
-                          {item.category_name.charAt(0)}
+                          {getCategoryIcon(item.category_name, item.category_color || '#fff', 16) || item.category_name.charAt(0)}
                         </div>
                         <span style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {item.category_name}
@@ -731,7 +732,7 @@ function MobileStatsView({
                       color: item.category_color || '#F5A623',
                     }}
                   >
-                    {item.category_name.charAt(0)}
+                    {getCategoryIcon(item.category_name, item.category_color || '#F5A623', 16) || item.category_name.charAt(0)}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
