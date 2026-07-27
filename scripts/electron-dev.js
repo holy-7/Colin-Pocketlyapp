@@ -3,7 +3,7 @@
 //
 // 关键：ELECTRON_RUN_AS_NODE=1 会导致 Electron 以纯 Node.js 模式运行，
 // 必须在启动 Electron 二进制前移除该环境变量。
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const path = require('path');
 const http = require('http');
 
@@ -18,6 +18,16 @@ const viteEntry = path.join(rootDir, 'node_modules', 'vite', 'bin', 'vite.js');
 
 console.log('[Colin] 🚀 启动 Colin记账 桌面开发环境');
 console.log('[Colin] ELECTRON_RUN_AS_NODE =', process.env.ELECTRON_RUN_AS_NODE || '(已清除)');
+
+// 0. 编译 Electron TypeScript → dist-electron/
+try {
+  console.log('[Colin] 🔨 编译 Electron 主进程...');
+  execSync('npx tsc -p tsconfig.electron.json', { cwd: rootDir, stdio: 'pipe' });
+  console.log('[Colin] ✅ Electron 编译完成');
+} catch (err) {
+  console.error('[Colin] ❌ Electron 编译失败:', err.message);
+  process.exit(1);
+}
 
 // 1. 启动 Vite 开发服务器
 const viteProcess = spawn('node', [viteEntry], {

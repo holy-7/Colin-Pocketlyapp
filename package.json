@@ -2,10 +2,12 @@
   "name": "colin-accounting",
   "version": "1.0.0",
   "description": "Colin记账 — 数据自控 + 极简无广告 + AI 对话式财务助手",
-  "main": "electron/main.js",
+  "author": "Colin",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "node scripts/electron-dev.js",
     "build": "vite build && tsc -p tsconfig.electron.json",
+    "build:web": "vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "electron:build": "npm run build && electron-builder",
     "package:win": "npm run build && electron-builder --win",
@@ -27,11 +29,13 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "resources/icon.png"
+      "icon": "resources/icon.png",
+      "signAndEditExecutable": false
     },
     "mac": {
       "target": "dmg",
-      "icon": "resources/icon.png"
+      "icon": "resources/icon.png",
+      "identity": null
     },
     "nsis": {
       "oneClick": false,

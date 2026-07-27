@@ -14,7 +14,10 @@ Thumbs.db
 # 测试截图与临时文件
 screenshots/
 *.png
+!public/*.png
+!resources/*.png
 mobile-snapshot.txt
 *.yml
+!.github/workflows/*.yml
 .playwright-mcp/
 LOOP-STATE.md
