@@ -21,3 +21,4 @@ mobile-snapshot.txt
 !.github/workflows/*.yml
 .playwright-mcp/
 LOOP-STATE.md
+package-lock.json
