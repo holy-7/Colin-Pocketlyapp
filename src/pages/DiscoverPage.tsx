@@ -14,12 +14,19 @@ import dayjs from 'dayjs';
 import BudgetProgress from '@/components/BudgetProgress';
 import MobileHeader from '@/components/MobileHeader';
 import MobileCard from '@/components/MobileCard';
+import {
+  MobileSettingsSheet,
+  MobileCategoryManager,
+  MobileAccountList,
+  MobileExportView,
+} from '@/components/MobileSettings';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useBudgetStore } from '@/stores/budgetStore';
 import { useTransactionStore } from '@/stores/transactionStore';
 import { useCategoryStore } from '@/stores/categoryStore';
+import { useAccountStore } from '@/stores/accountStore';
 import { useChatStore } from '@/stores/chatStore';
 import {
   MOBILE_PRIMARY, MOBILE_CARD_BG, MOBILE_TEXT_PRIMARY,
@@ -100,11 +107,13 @@ function MobileDiscoverView() {
   const navigate = useNavigate();
   const { budgets, fetchBudgets, getTotalBudget, setBudget } = useBudgetStore();
   const { categories } = useCategoryStore();
+  const { accounts } = useAccountStore();
   const { getTransactionsByDateRange } = useTransactionStore();
   const [totalSpent, setTotalSpent] = useState(0);
   const [monthIncome, setMonthIncome] = useState(0);
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [settingsSubView, setSettingsSubView] = useState<'categories' | 'accounts' | 'export' | null>(null);
   const [budgetForm] = Form.useForm();
   const { messages, loading, streaming, send, clearHistory } = useChatStore();
 
@@ -144,6 +153,33 @@ function MobileDiscoverView() {
   };
 
   const expenseCategories = categories.filter((c) => c.type === 'expense');
+
+  // 子视图：分类管理
+  if (settingsSubView === 'categories') {
+    return (
+      <MobileSettingsSheet title="分类管理" onBack={() => setSettingsSubView(null)}>
+        <MobileCategoryManager categories={categories} />
+      </MobileSettingsSheet>
+    );
+  }
+
+  // 子视图：账户管理
+  if (settingsSubView === 'accounts') {
+    return (
+      <MobileSettingsSheet title="账户管理" onBack={() => setSettingsSubView(null)}>
+        <MobileAccountList accounts={accounts} />
+      </MobileSettingsSheet>
+    );
+  }
+
+  // 子视图：数据导出
+  if (settingsSubView === 'export') {
+    return (
+      <MobileSettingsSheet title="数据导出" onBack={() => setSettingsSubView(null)}>
+        <MobileExportView />
+      </MobileSettingsSheet>
+    );
+  }
 
   return (
     <div
@@ -305,17 +341,17 @@ function MobileDiscoverView() {
             <FunctionItem
               label="分类管理"
               icon="🏷️"
-              onClick={() => navigate('/settings?tab=categories')}
+              onClick={() => setSettingsSubView('categories')}
             />
             <FunctionItem
               label="账户管理"
               icon="🏦"
-              onClick={() => navigate('/settings?tab=accounts')}
+              onClick={() => setSettingsSubView('accounts')}
             />
             <FunctionItem
               label="数据导出"
               icon="📤"
-              onClick={() => navigate('/settings?tab=export')}
+              onClick={() => setSettingsSubView('export')}
             />
             <FunctionItem
               label="AI助手"

@@ -22,6 +22,7 @@ interface TransactionStore {
   deleteTransaction: (id: string) => Promise<boolean>;
   getTransactionsByMonth: (year: number, month: number) => Promise<Transaction[]>;
   getTransactionsByDateRange: (from: string, to: string) => Promise<Transaction[]>;
+  getDistinctDateCount: () => Promise<number>;
 }
 
 export const useTransactionStore = create<TransactionStore>((set) => ({
@@ -259,5 +260,24 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
       }
     }
     return data as Transaction[];
+  },
+
+  getDistinctDateCount: async () => {
+    // 从 Supabase 获取所有 date 字段（无分页）
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('date');
+
+    if (!error && data) {
+      return new Set(data.map((d: { date: string }) => d.date)).size;
+    }
+
+    // 离线降级：从本地缓存统计
+    try {
+      const cached = await getCachedRecords<Transaction>('transactions');
+      return new Set(cached.map((t) => t.date)).size;
+    } catch {
+      return 0;
+    }
   },
 }));
