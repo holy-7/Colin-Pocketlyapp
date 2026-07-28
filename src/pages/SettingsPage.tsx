@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import {
   Card, Tabs, Table, Button, Modal, Form, Input, Select, InputNumber,
   Popconfirm, Tag, Space, App, ColorPicker,
@@ -23,20 +23,29 @@ import type { Category, Account } from '@/types';
 
 export default function SettingsPage() {
   const { isMobile } = useResponsive();
+  const [activeTab, setActiveTab] = useState('categories');
 
   if (isMobile) {
     return <MobileProfileView />;
   }
 
   return (
-    <Tabs
-      defaultActiveKey="categories"
-      items={[
-        { key: 'categories', label: '分类管理', children: <CategorySettings /> },
-        { key: 'accounts', label: '账户管理', children: <AccountSettings /> },
-        { key: 'export', label: '数据导出', children: <ExportSettings /> },
-      ]}
-    />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { key: 'categories', label: '分类管理' },
+          { key: 'accounts', label: '账户管理' },
+          { key: 'export', label: '数据导出' },
+        ]}
+      />
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        {activeTab === 'categories' && <CategorySettings />}
+        {activeTab === 'accounts' && <AccountSettings />}
+        {activeTab === 'export' && <ExportSettings />}
+      </div>
+    </div>
   );
 }
 
@@ -47,6 +56,22 @@ function CategorySettings() {
   const [editing, setEditing] = useState<Category | null>(null);
   const [form] = Form.useForm();
   const { message } = App.useApp();
+
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const [tableScrollY, setTableScrollY] = useState(400);
+
+  useLayoutEffect(() => {
+    const wrapper = tableWrapperRef.current;
+    if (!wrapper) return;
+    const calc = () => {
+      const h = wrapper.clientHeight;
+      if (h > 0) setTableScrollY(h - 119);
+    };
+    calc();
+    const ro = new ResizeObserver(() => calc());
+    ro.observe(wrapper);
+    return () => ro.disconnect();
+  }, []);
 
   const handleSubmit = async () => {
     const values = await form.validateFields();
@@ -106,40 +131,44 @@ function CategorySettings() {
   ];
 
   return (
-    <Card
-      title="分类管理"
-      extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>
-        添加分类
-      </Button>}
-    >
-      <Table columns={columns} dataSource={categories} rowKey="id" pagination={false} size="middle" />
-
-      <Modal
-        title={editing ? '编辑分类' : '添加分类'}
-        open={modalOpen}
-        onOk={handleSubmit}
-        onCancel={() => { setModalOpen(false); setEditing(null); }}
-        destroyOnHidden
+    <div ref={tableWrapperRef} style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
+      <Card
+        title="分类管理"
+        extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>
+          添加分类
+        </Button>}
+        style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+        styles={{ body: { flex: 1, minHeight: 0, overflow: 'hidden', padding: 24 } }}
       >
-        <Form form={form} layout="vertical" initialValues={{ type: 'expense' }}>
-          <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入分类名称' }]}>
-            <Input placeholder="如：聚餐、地铁" />
-          </Form.Item>
-          <Form.Item name="type" label="类型" rules={[{ required: true }]}>
-            <Select options={[
-              { label: '支出', value: 'expense' },
-              { label: '收入', value: 'income' },
-            ]} />
-          </Form.Item>
-          <Form.Item name="icon" label="图标（Ant Design 图标名）">
-            <Input placeholder="如：CoffeeOutlined" />
-          </Form.Item>
-          <Form.Item name="color" label="颜色">
-            <ColorPicker format="hex" />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Card>
+        <Table columns={columns} dataSource={categories} rowKey="id" pagination={{ pageSize: 10 }} size="middle" scroll={{ y: tableScrollY }} />
+
+        <Modal
+          title={editing ? '编辑分类' : '添加分类'}
+          open={modalOpen}
+          onOk={handleSubmit}
+          onCancel={() => { setModalOpen(false); setEditing(null); }}
+          destroyOnHidden
+        >
+          <Form form={form} layout="vertical" initialValues={{ type: 'expense' }}>
+            <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入分类名称' }]}>
+              <Input placeholder="如：聚餐、地铁" />
+            </Form.Item>
+            <Form.Item name="type" label="类型" rules={[{ required: true }]}>
+              <Select options={[
+                { label: '支出', value: 'expense' },
+                { label: '收入', value: 'income' },
+              ]} />
+            </Form.Item>
+            <Form.Item name="icon" label="图标（Ant Design 图标名）">
+              <Input placeholder="如：CoffeeOutlined" />
+            </Form.Item>
+            <Form.Item name="color" label="颜色">
+              <ColorPicker format="hex" />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </Card>
+    </div>
   );
 }
 
@@ -150,6 +179,22 @@ function AccountSettings() {
   const [editing, setEditing] = useState<Account | null>(null);
   const [form] = Form.useForm();
   const { message } = App.useApp();
+
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const [tableScrollY, setTableScrollY] = useState(400);
+
+  useLayoutEffect(() => {
+    const wrapper = tableWrapperRef.current;
+    if (!wrapper) return;
+    const calc = () => {
+      const h = wrapper.clientHeight;
+      if (h > 0) setTableScrollY(h - 119);
+    };
+    calc();
+    const ro = new ResizeObserver(() => calc());
+    ro.observe(wrapper);
+    return () => ro.disconnect();
+  }, []);
 
   const handleSubmit = async () => {
     const values = await form.validateFields();
@@ -190,35 +235,39 @@ function AccountSettings() {
   ];
 
   return (
-    <Card
-      title="账户管理"
-      extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>
-        添加账户
-      </Button>}
-    >
-      <Table columns={columns} dataSource={accounts} rowKey="id" pagination={false} size="middle" />
+    <div ref={tableWrapperRef} style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
+      <Card
+        title="账户管理"
+        extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>
+          添加账户
+        </Button>}
+        style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+        styles={{ body: { flex: 1, minHeight: 0, overflow: 'hidden', padding: 24 } }}
+      >
+        <Table columns={columns} dataSource={accounts} rowKey="id" pagination={{ pageSize: 10 }} size="middle" scroll={{ y: tableScrollY }} />
 
-      <Modal title={editing ? '编辑账户' : '添加账户'} open={modalOpen} onOk={handleSubmit}
-        onCancel={() => { setModalOpen(false); setEditing(null); }} destroyOnHidden>
-        <Form form={form} layout="vertical">
-          <Form.Item name="name" label="账户名称" rules={[{ required: true }]}>
-            <Input placeholder="如：招商银行卡" />
-          </Form.Item>
-          <Form.Item name="type" label="账户类型" rules={[{ required: true }]}>
-            <Select options={[
-              { label: '现金', value: '现金' },
-              { label: '银行卡', value: '银行卡' },
-              { label: '信用卡', value: '信用卡' },
-              { label: '支付宝', value: '支付宝' },
-              { label: '微信', value: '微信' },
-            ]} />
-          </Form.Item>
-          <Form.Item name="balance" label="当前余额">
-            <InputNumber prefix="¥" precision={2} style={{ width: '100%' }} />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Card>
+        <Modal title={editing ? '编辑账户' : '添加账户'} open={modalOpen} onOk={handleSubmit}
+          onCancel={() => { setModalOpen(false); setEditing(null); }} destroyOnHidden>
+          <Form form={form} layout="vertical">
+            <Form.Item name="name" label="账户名称" rules={[{ required: true }]}>
+              <Input placeholder="如：招商银行卡" />
+            </Form.Item>
+            <Form.Item name="type" label="账户类型" rules={[{ required: true }]}>
+              <Select options={[
+                { label: '现金', value: '现金' },
+                { label: '银行卡', value: '银行卡' },
+                { label: '信用卡', value: '信用卡' },
+                { label: '支付宝', value: '支付宝' },
+                { label: '微信', value: '微信' },
+              ]} />
+            </Form.Item>
+            <Form.Item name="balance" label="当前余额">
+              <InputNumber prefix="¥" precision={2} style={{ width: '100%' }} />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </Card>
+    </div>
   );
 }
 

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, List, Tag, Empty, Statistic, Row, Col, Modal } from 'antd';
+import { Button, Card, Tag, Empty, Statistic, Row, Col, Modal, Table } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, RightOutlined, DownOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import TransactionForm from '@/components/TransactionForm';
@@ -83,124 +84,178 @@ export default function HomePage() {
     );
   }
 
-  // ==================== Desktop (unchanged) ====================
+  // ==================== Desktop (scroll fix) ====================
 
   const todayStr = dayjs().format('YYYY-MM-DD');
-  const todayTransactions = transactions.filter((t) => t.date === todayStr);
+  const todayTransactions = useMemo(
+    () => transactions.filter((t) => t.date === todayStr),
+    [transactions, todayStr]
+  );
 
   const monthStr = dayjs().format('YYYY-MM');
-  const thisMonthExpenses = transactions
-    .filter((t) => t.type === 'expense' && t.date.startsWith(monthStr))
-    .reduce((sum, t) => sum + t.amount, 0);
+  const thisMonthExpenses = useMemo(
+    () =>
+      transactions
+        .filter((t) => t.type === 'expense' && t.date.startsWith(monthStr))
+        .reduce((sum, t) => sum + t.amount, 0),
+    [transactions, monthStr]
+  );
 
   const totalBudget = getTotalBudget();
 
+  // ResizeObserver → 动态 scroll.y
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const [tableScrollY, setTableScrollY] = useState(400);
+
+  useLayoutEffect(() => {
+    const wrapper = tableWrapperRef.current;
+    if (!wrapper) return;
+    const calc = () => {
+      const h = wrapper.clientHeight;
+      if (h > 0) setTableScrollY(h - 119); // 55px 表头 + 64px 分页栏
+    };
+    calc();
+    const ro = new ResizeObserver(() => calc());
+    ro.observe(wrapper);
+    return () => ro.disconnect();
+  }, []);
+
+  const todayColumns: ColumnsType<Transaction> = [
+    {
+      title: '分类',
+      dataIndex: 'category_id',
+      key: 'category',
+      width: 100,
+      render: (id: string) => {
+        const cat = getCategoryInfo(id);
+        return <Tag color={cat?.color || undefined}>{cat?.name || '未知'}</Tag>;
+      },
+    },
+    {
+      title: '类型',
+      dataIndex: 'type',
+      key: 'type',
+      width: 80,
+      render: (type: string) => (
+        <Tag color={type === 'expense' ? 'red' : 'green'}>
+          {type === 'expense' ? '支出' : '收入'}
+        </Tag>
+      ),
+    },
+    {
+      title: '金额',
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 130,
+      align: 'right',
+      sorter: (a, b) => a.amount - b.amount,
+      render: (amount: number, record) => (
+        <span style={{
+          fontSize: 16,
+          fontWeight: 600,
+          color: record.type === 'expense' ? '#E74C3C' : '#27AE60',
+        }}>
+          {record.type === 'expense' ? '-' : '+'}¥{amount.toFixed(2)}
+        </span>
+      ),
+    },
+    {
+      title: '账户',
+      dataIndex: 'account_id',
+      key: 'account',
+      width: 100,
+      render: (_id, record) => record.account?.name || '-',
+    },
+    {
+      title: '备注',
+      dataIndex: 'note',
+      key: 'note',
+      ellipsis: true,
+      render: (note: string | null) => note || '-',
+    },
+  ];
+
   return (
-    <div>
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={12} md={6}>
-          <Card>
-            <Statistic title="今日已记" value={todayTransactions.length} suffix="笔" />
-          </Card>
-        </Col>
-        <Col xs={12} sm={12} md={6}>
-          <Card>
-            <Statistic
-              title="本月支出"
-              value={thisMonthExpenses}
-              precision={2}
-              prefix="¥"
-              valueStyle={{ color: '#E74C3C' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={12} md={6}>
-          <Card>
-            <Statistic title="交易总数" value={totalCount} suffix="笔" />
-          </Card>
-        </Col>
-        <Col xs={12} sm={12} md={6}>
-          <Card>
-            <Statistic
-              title="本月预算"
-              value={totalBudget || 0}
-              precision={2}
-              prefix="¥"
-              valueStyle={{ color: totalBudget > 0 ? '#4ECDC4' : '#999' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {/* 统计卡片 + 预算 — 固定在顶部 */}
+      <div style={{ flexShrink: 0 }}>
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={12} sm={12} md={6}>
+            <Card>
+              <Statistic title="今日已记" value={todayTransactions.length} suffix="笔" />
+            </Card>
+          </Col>
+          <Col xs={12} sm={12} md={6}>
+            <Card>
+              <Statistic
+                title="本月支出"
+                value={thisMonthExpenses}
+                precision={2}
+                prefix="¥"
+                valueStyle={{ color: '#E74C3C' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={12} md={6}>
+            <Card>
+              <Statistic title="交易总数" value={totalCount} suffix="笔" />
+            </Card>
+          </Col>
+          <Col xs={12} sm={12} md={6}>
+            <Card>
+              <Statistic
+                title="本月预算"
+                value={totalBudget || 0}
+                precision={2}
+                prefix="¥"
+                valueStyle={{ color: totalBudget > 0 ? '#4ECDC4' : '#999' }}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-      {totalBudget > 0 && (
-        <Card style={{ marginBottom: 24 }}>
-          <BudgetProgress totalBudget={totalBudget} spent={thisMonthExpenses} />
-        </Card>
-      )}
-
-      <Card
-        title="今日记账"
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormOpen(true)}>
-            记一笔
-          </Button>
-        }
-      >
-        {todayTransactions.length === 0 ? (
-          <Empty description="今天还没有记账" style={{ padding: '40px 0' }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormOpen(true)}>
-              点此记第一笔
-            </Button>
-          </Empty>
-        ) : (
-          <List
-            loading={loading}
-            dataSource={todayTransactions}
-            renderItem={(item: Transaction) => {
-              const cat = getCategoryInfo(item.category_id);
-              return (
-                <List.Item>
-                  <List.Item.Meta
-                    avatar={
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          width: 36,
-                          height: 36,
-                          borderRadius: '50%',
-                          background: cat?.color || '#ddd',
-                          color: '#fff',
-                          textAlign: 'center',
-                          lineHeight: '36px',
-                          fontSize: 18,
-                        }}
-                      >
-                                                {getCategoryIcon(cat?.name || '', cat?.color || '#ddd', 18) || (item.type === 'expense' ? '支' : '收')}
-                      </span>
-                    }
-                    title={
-                      <span>
-                        <Tag color={cat?.color || undefined}>{cat?.name || '未分类'}</Tag>
-                        {item.note || '无备注'}
-                      </span>
-                    }
-                    description={`${item.date} · ${item.account?.name || ''}`}
-                  />
-                  <span
-                    style={{
-                      fontSize: 18,
-                      fontWeight: 700,
-                      color: item.type === 'expense' ? '#E74C3C' : '#27AE60',
-                    }}
-                  >
-                    {item.type === 'expense' ? '-' : '+'}¥{item.amount.toFixed(2)}
-                  </span>
-                </List.Item>
-              );
-            }}
-          />
+        {totalBudget > 0 && (
+          <Card style={{ marginBottom: 16 }}>
+            <BudgetProgress totalBudget={totalBudget} spent={thisMonthExpenses} />
+          </Card>
         )}
-      </Card>
+      </div>
+
+      {/* 今日记账 — 占剩余空间，内部滚动（表头 sticky + 分页固定） */}
+      <div ref={tableWrapperRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <Card
+          title="今日记账"
+          extra={
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormOpen(true)}>
+              记一笔
+            </Button>
+          }
+          style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+          styles={{ body: { flex: 1, minHeight: 0, overflow: 'hidden', padding: 24 } }}
+        >
+          {todayTransactions.length === 0 ? (
+            <Empty description="今天还没有记账" style={{ padding: '40px 0' }}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormOpen(true)}>
+                点此记第一笔
+              </Button>
+            </Empty>
+          ) : (
+            <Table
+              columns={todayColumns}
+              dataSource={todayTransactions}
+              rowKey="id"
+              loading={loading}
+              pagination={{
+                pageSize: 10,
+                showTotal: (total) => `共 ${total} 笔`,
+                showSizeChanger: false,
+              }}
+              scroll={{ x: 600, y: tableScrollY }}
+              size="middle"
+            />
+          )}
+        </Card>
+      </div>
 
       <TransactionForm
         open={formOpen}

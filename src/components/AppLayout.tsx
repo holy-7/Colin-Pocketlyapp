@@ -43,7 +43,7 @@ function DesktopLayout() {
   const selectedKey = getSelectedKey(location.pathname);
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
       <Sider theme="light" width={200} style={{ borderRight: '1px solid #f0f0f0' }}>
         <div
           style={{

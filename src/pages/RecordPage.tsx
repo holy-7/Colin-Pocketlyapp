@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import {
   Table, Button, Tag, Space, Input, Select, DatePicker, Popconfirm, App,
 } from 'antd';
@@ -79,7 +79,23 @@ export default function RecordPage() {
     );
   }
 
-  // ==================== Desktop (unchanged) ====================
+  // ==================== Desktop (scroll fix) ====================
+
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const [tableScrollY, setTableScrollY] = useState(400);
+
+  useLayoutEffect(() => {
+    const wrapper = tableWrapperRef.current;
+    if (!wrapper) return;
+    const calc = () => {
+      const h = wrapper.clientHeight;
+      if (h > 0) setTableScrollY(h - 119); // 55px 表头 + 64px 分页栏
+    };
+    calc();
+    const ro = new ResizeObserver(() => calc());
+    ro.observe(wrapper);
+    return () => ro.disconnect();
+  }, []);
 
   const columns: ColumnsType<Transaction> = [
     {
@@ -172,9 +188,9 @@ export default function RecordPage() {
   ];
 
   return (
-    <div>
-      {/* 筛选栏 */}
-      <div style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {/* 筛选栏 — 固定在顶部 */}
+      <div style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
         <Select
           placeholder="交易类型"
           allowClear
@@ -217,26 +233,28 @@ export default function RecordPage() {
         </Button>
       </div>
 
-      {/* 交易表格 */}
-      <Table
-        columns={columns}
-        dataSource={transactions}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: page,
-          pageSize,
-          total: totalCount,
-          showTotal: (total) => `共 ${total} 笔交易`,
-          showSizeChanger: false,
-          onChange: (p) => setPage(p),
-        }}
-        locale={{
-          emptyText: '还没有记账，点右上角"记一笔"开始',
-        }}
-        scroll={{ x: 800 }}
-        size="middle"
-      />
+      {/* 交易表格 — 占剩余空间，内部滚动（表头 sticky + 分页固定） */}
+      <div ref={tableWrapperRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <Table
+          columns={columns}
+          dataSource={transactions}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total: totalCount,
+            showTotal: (total) => `共 ${total} 笔交易`,
+            showSizeChanger: false,
+            onChange: (p) => setPage(p),
+          }}
+          locale={{
+            emptyText: '还没有记账，点右上角"记一笔"开始',
+          }}
+          scroll={{ x: 800, y: tableScrollY }}
+          size="middle"
+        />
+      </div>
 
       {/* 记账弹窗 */}
       <TransactionForm

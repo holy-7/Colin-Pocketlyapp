@@ -38,7 +38,7 @@ function DesktopChatPage() {
   }, [messages, streaming]);
 
   return (
-    <div style={{ display: 'flex', gap: 24, height: 'calc(100vh - 160px)' }}>
+    <div style={{ display: 'flex', gap: 24, height: '100%' }}>
       {/* 左侧：聊天区 */}
       <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
