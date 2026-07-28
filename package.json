@@ -15,7 +15,8 @@
     "lint": "eslint src --ext .ts,.tsx",
     "test": "vitest",
     "test:run": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "electron:fix": "node -e \"process.env.ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/';require('child_process').execSync('node node_modules/electron/install.js',{stdio:'inherit'})\""
   },
   "build": {
     "appId": "com.colin.accounting",

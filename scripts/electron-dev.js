@@ -5,6 +5,7 @@
 // 必须在启动 Electron 二进制前移除该环境变量。
 const { spawn, execSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 const http = require('http');
 
 // ====== 清除 ELECTRON_RUN_AS_NODE ======
@@ -19,7 +20,22 @@ const viteEntry = path.join(rootDir, 'node_modules', 'vite', 'bin', 'vite.js');
 console.log('[Colin] 🚀 启动 Colin记账 桌面开发环境');
 console.log('[Colin] ELECTRON_RUN_AS_NODE =', process.env.ELECTRON_RUN_AS_NODE || '(已清除)');
 
-// 0. 编译 Electron TypeScript → dist-electron/
+// 0. 预检查：Electron 二进制是否存在
+if (!fs.existsSync(electronExe)) {
+  console.error('[Colin] ❌ 找不到 Electron 可执行文件:');
+  console.error('     ' + electronExe);
+  console.error('');
+  console.error('[Colin] 💡 这通常是中国大陆网络环境下 GitHub 下载失败导致的。');
+  console.error('[Colin] 💡 请手动运行以下命令修复:');
+  console.error('');
+  console.error('     set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/');
+  console.error('     node node_modules\\electron\\install.js');
+  console.error('');
+  console.error('[Colin] 💡 或直接运行: npm run electron:fix');
+  process.exit(1);
+}
+
+// 1. 编译 Electron TypeScript → dist-electron/
 try {
   console.log('[Colin] 🔨 编译 Electron 主进程...');
   execSync('npx tsc -p tsconfig.electron.json', { cwd: rootDir, stdio: 'pipe' });
