@@ -3,11 +3,35 @@
 // 与 Supabase PostgreSQL Schema 对齐
 // ============================================================
 
+// ---- 会员 ----
+export type MembershipTier = 'free' | 'premium' | 'lifetime';
+
+export interface UserProfile {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  membership_tier: MembershipTier;
+  premium_expires_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserSubscription {
+  id: string;
+  user_id: string;
+  plan: 'monthly' | 'yearly' | 'lifetime';
+  status: 'active' | 'expired' | 'cancelled';
+  started_at: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
 // ---- 账户 ----
 export type AccountType = '现金' | '银行卡' | '信用卡' | '支付宝' | '微信';
 
 export interface Account {
   id: string;
+  user_id?: string;
   name: string;
   type: AccountType;
   balance: number;
@@ -21,6 +45,7 @@ export type CategoryKind = 'income' | 'expense';
 
 export interface Category {
   id: string;
+  user_id?: string;
   name: string;
   type: CategoryKind;
   parent_id: string | null;
@@ -35,6 +60,7 @@ export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
   id: string;
+  user_id?: string;
   account_id: string;
   category_id: string;
   amount: number;
@@ -52,6 +78,7 @@ export interface Transaction {
 // ---- 标签 ----
 export interface Tag {
   id: string;
+  user_id?: string;
   name: string;
   color: string | null;
   created_at: string;
@@ -60,6 +87,7 @@ export interface Tag {
 // ---- 预算 ----
 export interface Budget {
   id: string;
+  user_id?: string;
   category_id: string | null; // null = 总预算
   amount: number;
   period: string;

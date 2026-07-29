@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { syncManager } from '@/services/syncManager';
 import { getCachedRecords, cacheRecords } from '@/db/database';
+import { useAuthStore } from '@/stores/authStore';
 import type { Category, CategoryKind } from '@/types';
 
 interface CategoryStore {
@@ -32,8 +33,9 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     set({ loading: true, error: null });
 
     // 本地缓存优先：先从 IndexedDB 加载（瞬时渲染）
+    const userId = useAuthStore.getState().user?.id;
     try {
-      const cached = await getCachedRecords<Category>('categories');
+      const cached = await getCachedRecords<Category>('categories', userId);
       if (cached.length > 0) {
         set({ categories: cached, initialized: true });
       }
@@ -55,15 +57,17 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       set({ categories: data as Category[], loading: false, initialized: true });
       // 更新本地缓存
       try {
-        await cacheRecords('categories', data as Category[]);
+        await cacheRecords('categories', data as Category[], userId);
       } catch { /* 缓存写入失败不影响功能 */ }
     }
   },
 
   addCategory: async (data) => {
+    const userId = useAuthStore.getState().user?.id;
     const { data: created, error } = await supabase
       .from('categories')
       .insert({
+        user_id: userId,
         name: data.name,
         type: data.type,
         icon: data.icon || null,
@@ -77,14 +81,14 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       // 离线降级：通过 SyncManager 入队
       const tempId = crypto.randomUUID();
       set((state) => ({
-        categories: [...state.categories, { id: tempId, ...data, is_default: false, created_at: new Date().toISOString(), parent_id: null } as Category],
+        categories: [...state.categories, { id: tempId, user_id: userId, ...data, is_default: false, created_at: new Date().toISOString(), parent_id: null } as Category],
       }));
       await syncManager.writeOptimistic('categories', 'INSERT', tempId, {
-        id: tempId, name: data.name, type: data.type,
+        id: tempId, user_id: userId, name: data.name, type: data.type,
         icon: data.icon || null, color: data.color || null, is_default: false,
         created_at: new Date().toISOString(),
       });
-      return { id: tempId, ...data, is_default: false } as Category;
+      return { id: tempId, user_id: userId, ...data, is_default: false } as Category;
     }
 
     set((state) => ({ categories: [...state.categories, created as Category] }));

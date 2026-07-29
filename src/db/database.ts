@@ -7,6 +7,7 @@ import type { Transaction, Category, Account, Budget } from '@/types';
 export interface LocalRecord {
   id: string;            // 与 Supabase 相同的 ID
   table: string;         // 'transactions' | 'categories' | 'accounts' | 'budgets'
+  userId?: string;       // 所属用户 ID（用于缓存隔离和清除）
   data: unknown;         // 完整的行数据
   updatedAt: string;     // ISO 时间戳（来自 Supabase updated_at 或 created_at）
   syncStatus: 'synced' | 'pending' | 'conflict';
@@ -42,8 +43,8 @@ export class ColinDB extends Dexie {
 
   constructor() {
     super('ColinDB');
-    this.version(1).stores({
-      localRecords: '[table+id], table, syncStatus, updatedAt',
+    this.version(2).stores({
+      localRecords: '[table+id], table, userId, syncStatus, updatedAt',
       pendingOps: '++id, table, timestamp',
       syncMeta: 'key',
     });
@@ -61,11 +62,12 @@ function recordKey(table: string, id: string): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function cacheRecord(table: string, record: any) {
+export async function cacheRecord(table: string, record: any, userId?: string) {
   const timestamp = record.updated_at || record.created_at || new Date().toISOString();
   await db.localRecords.put({
     id: recordKey(table, record.id),
     table,
+    userId: userId || record.user_id,
     data: record,
     updatedAt: timestamp,
     syncStatus: 'synced',
@@ -73,10 +75,11 @@ export async function cacheRecord(table: string, record: any) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function cacheRecords(table: string, records: any[]) {
+export async function cacheRecords(table: string, records: any[], userId?: string) {
   const rows = records.map((r: any) => ({
     id: recordKey(table, r.id),
     table,
+    userId: userId || r.user_id,
     data: r,
     updatedAt: r.updated_at || r.created_at || new Date().toISOString(),
     syncStatus: 'synced' as const,
@@ -84,11 +87,17 @@ export async function cacheRecords(table: string, records: any[]) {
   await db.localRecords.bulkPut(rows);
 }
 
-export async function getCachedRecords<T>(table: string): Promise<T[]> {
-  const records = await db.localRecords
+export async function getCachedRecords<T>(table: string, userId?: string): Promise<T[]> {
+  let records = await db.localRecords
     .where('[table+id]')
     .between([table, ''], [table, '￿'])
     .toArray();
+
+  // 按 userId 过滤（兼容旧数据：userId 为 undefined/null 的记录保留，但不同 userId 的记录排除）
+  if (userId) {
+    records = records.filter((r) => r.userId === undefined || r.userId === null || r.userId === userId);
+  }
+
   return records.map((r) => r.data as T);
 }
 
@@ -124,4 +133,13 @@ export async function setSyncMeta(key: string, value: string) {
 export async function getSyncMeta(key: string): Promise<string | null> {
   const meta = await db.syncMeta.get(key);
   return meta ? meta.value : null;
+}
+
+// ============================================================
+// 清除所有本地缓存（登出时调用）
+// ============================================================
+export async function clearAllCache() {
+  await db.localRecords.clear();
+  await db.pendingOps.clear();
+  await db.syncMeta.clear();
 }

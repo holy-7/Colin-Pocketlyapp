@@ -7,6 +7,7 @@ export interface Database {
       accounts: {
         Row: {
           id: string;
+          user_id: string | null;
           name: string;
           type: string;
           balance: number;
@@ -16,6 +17,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          user_id?: string;
           name: string;
           type: string;
           balance?: number;
@@ -25,6 +27,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string;
           name?: string;
           type?: string;
           balance?: number;
@@ -37,6 +40,7 @@ export interface Database {
       categories: {
         Row: {
           id: string;
+          user_id: string | null;
           name: string;
           type: string;
           parent_id: string | null;
@@ -47,6 +51,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          user_id?: string;
           name: string;
           type: string;
           parent_id?: string | null;
@@ -57,6 +62,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string;
           name?: string;
           type?: string;
           parent_id?: string | null;
@@ -70,6 +76,7 @@ export interface Database {
       transactions: {
         Row: {
           id: string;
+          user_id: string | null;
           account_id: string;
           category_id: string;
           amount: number;
@@ -81,6 +88,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          user_id?: string;
           account_id: string;
           category_id: string;
           amount: number;
@@ -92,6 +100,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string;
           account_id?: string;
           category_id?: string;
           amount?: number;
@@ -106,18 +115,21 @@ export interface Database {
       tags: {
         Row: {
           id: string;
+          user_id: string | null;
           name: string;
           color: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
+          user_id?: string;
           name: string;
           color?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
+          user_id?: string;
           name?: string;
           color?: string | null;
           created_at?: string;
@@ -142,6 +154,7 @@ export interface Database {
       budgets: {
         Row: {
           id: string;
+          user_id: string | null;
           category_id: string | null;
           amount: number;
           period: string;
@@ -151,6 +164,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          user_id?: string;
           category_id?: string | null;
           amount: number;
           period?: string;
@@ -160,12 +174,73 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string;
           category_id?: string | null;
           amount?: number;
           period?: string;
           start_date?: string;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          id: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          membership_tier: string;
+          premium_expires_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          display_name?: string | null;
+          avatar_url?: string | null;
+          membership_tier?: string;
+          premium_expires_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          display_name?: string | null;
+          avatar_url?: string | null;
+          membership_tier?: string;
+          premium_expires_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      user_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          plan: string;
+          status: string;
+          started_at: string;
+          expires_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          plan: string;
+          status?: string;
+          started_at?: string;
+          expires_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          plan?: string;
+          status?: string;
+          started_at?: string;
+          expires_at?: string | null;
+          created_at?: string;
         };
         Relationships: [];
       };

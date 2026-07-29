@@ -81,6 +81,21 @@
       .stats-period-scroll::-webkit-scrollbar {
         display: none;
       }
+
+      /* ============ 登录页卡片入场动画 ============ */
+      .login-card-enter {
+        animation: loginSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      @keyframes loginSlideUp {
+        from {
+          opacity: 0;
+          transform: translateY(24px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
     </style>
   </head>
   <body>

@@ -18,10 +18,13 @@ import {
   RobotOutlined,
 } from '@ant-design/icons';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useMembership } from '@/hooks/useMembership';
+import { useMembershipStore } from '@/stores/membershipStore';
 import { useChatStore, QUICK_QUESTIONS } from '@/stores/chatStore';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import MobileCard from '@/components/MobileCard';
+import PremiumGate from '@/components/membership/PremiumGate';
 
 const { Text, Title } = Typography;
 
@@ -102,6 +105,50 @@ function DesktopChatPage() {
 }
 
 // ============================================================
+// AI 发送包装器（移动端检查限制）
+// ============================================================
+
+function AISendGate({ onSend, loading, isMobile, showGate }: { onSend: (content: string) => void; loading: boolean; isMobile: boolean; showGate?: boolean }) {
+  const membership = useMembership();
+  const membershipStore = useMembershipStore();
+
+  const handleSend = (content: string) => {
+    // 桌面端直接发送
+    if (!isMobile) {
+      onSend(content);
+      return;
+    }
+
+    // 移动端检查：premium/lifetime 直接发送
+    if (membership.canUseAI) {
+      membershipStore.incrementAI();
+      onSend(content);
+      return;
+    }
+
+    // 检查当日剩余次数
+    if (!membershipStore.canUseAI()) {
+      // limit reached, gate will be shown
+      return;
+    }
+
+    membershipStore.incrementAI();
+    onSend(content);
+  };
+
+  // 移动端且达到限制时显示 PremiumGate
+  if (isMobile && !membership.canUseAI && !membershipStore.canUseAI()) {
+    return (
+      <PremiumGate feature="ai">
+        <span />
+      </PremiumGate>
+    );
+  }
+
+  return <ChatInput onSend={handleSend} loading={loading} isMobile={isMobile} />;
+}
+
+// ============================================================
 // Mobile Layout
 // ============================================================
 
@@ -171,7 +218,7 @@ function MobileChatPage() {
 
       {/* 输入区 */}
       <div style={{ padding: '8px 12px', borderTop: '1px solid #f0f0f0', background: '#fff' }}>
-        <ChatInput onSend={send} loading={loading} isMobile />
+        <AISendGate onSend={send} loading={loading} isMobile />
       </div>
     </div>
   );

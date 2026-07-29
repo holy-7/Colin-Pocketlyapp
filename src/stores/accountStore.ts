@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { syncManager } from '@/services/syncManager';
 import { getCachedRecords, cacheRecords } from '@/db/database';
+import { useAuthStore } from '@/stores/authStore';
 import type { Account } from '@/types';
 
 interface AccountStore {
@@ -30,8 +31,9 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
     set({ loading: true, error: null });
 
     // 本地缓存优先
+    const userId = useAuthStore.getState().user?.id;
     try {
-      const cached = await getCachedRecords<Account>('accounts');
+      const cached = await getCachedRecords<Account>('accounts', userId);
       if (cached.length > 0) {
         set({ accounts: cached, initialized: true });
       }
@@ -47,13 +49,15 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
       return;
     }
     set({ accounts: data as Account[], loading: false, initialized: true });
-    try { await cacheRecords('accounts', data as Account[]); } catch { /* ignore */ }
+    try { await cacheRecords('accounts', data as Account[], userId); } catch { /* ignore */ }
   },
 
   addAccount: async (data) => {
+    const userId = useAuthStore.getState().user?.id;
     const { data: created, error } = await supabase
       .from('accounts')
       .insert({
+        user_id: userId,
         name: data.name,
         type: data.type,
         balance: data.balance ?? 0,
@@ -64,9 +68,9 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
     if (error) {
       // 离线降级
       const tempId = crypto.randomUUID();
-      set((state) => ({ accounts: [...state.accounts, { id: tempId, ...data, balance: data.balance ?? 0, currency: 'CNY', created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Account] }));
+      set((state) => ({ accounts: [...state.accounts, { id: tempId, user_id: userId, ...data, balance: data.balance ?? 0, currency: 'CNY', created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Account] }));
       await syncManager.writeOptimistic('accounts', 'INSERT', tempId, {
-        id: tempId, name: data.name, type: data.type,
+        id: tempId, user_id: userId, name: data.name, type: data.type,
         balance: data.balance ?? 0, currency: 'CNY',
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       });

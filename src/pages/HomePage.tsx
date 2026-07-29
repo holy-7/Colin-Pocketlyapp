@@ -579,7 +579,7 @@ function MobileHomePage({ transactions, categories, loading, onAdd, onUpdate, on
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-4-8c.79 0 1.5-.71 1.5-1.5S8.79 9 8 9s-1.5.71-1.5 1.5S7.21 12 8 12zm8 0c.79 0 1.5-.71 1.5-1.5S16.79 9 16 9s-1.5.71-1.5 1.5.71 1.5 1.5 1.5zm-4 5.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z" />
             </svg>
           </div>
-          <span style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>小鲸记账</span>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>Colin记账</span>
         </div>
 
         {/* 月度概览 */}

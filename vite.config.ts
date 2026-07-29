@@ -45,7 +45,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/hawungoiwtnbjmqqenpi\.supabase\.co\/.*/i,
+            // Supabase Data API — NetworkFirst (数据接口)
+            urlPattern: /^https:\/\/hawungoiwtnbjmqqenpi\.supabase\.co\/rest\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-api',
@@ -54,6 +55,11 @@ export default defineConfig({
                 maxAgeSeconds: 60 * 60,
               },
             },
+          },
+          {
+            // Supabase Auth API — NetworkOnly (认证接口不缓存)
+            urlPattern: /^https:\/\/hawungoiwtnbjmqqenpi\.supabase\.co\/auth\/.*/i,
+            handler: 'NetworkOnly',
           },
         ],
       },

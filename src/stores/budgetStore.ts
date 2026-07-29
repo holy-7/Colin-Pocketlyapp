@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { syncManager } from '@/services/syncManager';
 import { getCachedRecords, cacheRecords } from '@/db/database';
+import { useAuthStore } from '@/stores/authStore';
 import type { Budget } from '@/types';
 import type { Database } from '@/types/database';
 
@@ -38,8 +39,9 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
     set({ loading: true, error: null });
 
     // 本地缓存优先
+    const userId = useAuthStore.getState().user?.id;
     try {
-      const cached = await getCachedRecords<Budget>('budgets');
+      const cached = await getCachedRecords<Budget>('budgets', userId);
       if (cached.length > 0) {
         set({ budgets: cached.map(parseAmount), initialized: true });
       }
@@ -54,7 +56,7 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
       return;
     }
     set({ budgets: (data as Budget[]).map(parseAmount), loading: false, initialized: true });
-    try { await cacheRecords('budgets', data as Budget[]); } catch { /* ignore */ }
+    try { await cacheRecords('budgets', data as Budget[], userId); } catch { /* ignore */ }
   },
 
   setBudget: async (data) => {
@@ -63,7 +65,9 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
       (b) => (b.category_id ?? undefined) === (data.category_id ?? undefined)
     );
 
+    const userId = useAuthStore.getState().user?.id;
     const payload: BudgetInsert = {
+      user_id: userId,
       category_id: data.category_id || null,
       amount: data.amount,
       start_date: data.start_date || new Date().toISOString().slice(0, 10),

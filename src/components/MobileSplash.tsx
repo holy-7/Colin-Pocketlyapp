@@ -54,7 +54,7 @@ export default function MobileSplash({ onComplete }: MobileSplashProps) {
             margin: 0,
           }}
         >
-          小鲸记账
+          Colin记账
         </h1>
         <p
           style={{

@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card, Tabs, Table, Button, Modal, Form, Input, Select, InputNumber,
-  Popconfirm, Tag, Space, App, ColorPicker,
+  Popconfirm, Tag, Space, App, ColorPicker, Badge, message as antMessage,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, DownloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, DownloadOutlined, CrownOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useAuthStore } from '@/stores/authStore';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useAccountStore } from '@/stores/accountStore';
 import { useTransactionStore } from '@/stores/transactionStore';
@@ -350,13 +352,18 @@ function ExportSettings() {
 // ============================================================
 
 function MobileProfileView() {
+  const navigate = useNavigate();
   const { categories } = useCategoryStore();
   const { accounts } = useAccountStore();
   const { totalCount, getDistinctDateCount } = useTransactionStore();
-  const [activeView, setActiveView] = useState<'menu' | 'categories' | 'accounts' | 'export'>('menu');
+  const { profile, user, signOut } = useAuthStore();
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || '用户';
+  const isFree = profile?.membership_tier === 'free';
+  const isPremium = profile?.membership_tier === 'premium' || profile?.membership_tier === 'lifetime';
+  const [activeView, setActiveView] = useState<'menu' | 'categories' | 'accounts' | 'export' | 'accountInfo'>('menu');
   const [uniqueDays, setUniqueDays] = useState(0);
 
-  // 统计天数 — 从全部交易中获取不重复日期数（而非仅当前页20条）
+  // 统计天数
   useEffect(() => {
     getDistinctDateCount().then(setUniqueDays);
   }, [getDistinctDateCount]);
@@ -385,6 +392,10 @@ function MobileProfileView() {
     );
   }
 
+  if (activeView === 'accountInfo') {
+    return <MobileAccountInfoView onBack={() => setActiveView('menu')} />;
+  }
+
   // 主菜单
   return (
     <div
@@ -399,25 +410,51 @@ function MobileProfileView() {
       {/* 黄色个人头部 */}
       <MobileHeader style={{ padding: '20px 16px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              width: 60,
-              height: 60,
-              borderRadius: '50%',
-              background: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+          <Badge
+            count={
+              isFree ? (
+                <span
+                  onClick={() => navigate('/membership')}
+                  style={{
+                    background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                    color: '#fff',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  升级
+                </span>
+              ) : null
+            }
+            offset={[-4, 4]}
           >
-            <svg viewBox="0 0 24 24" fill="#F5A623" width="30" height="30">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-            </svg>
-          </div>
+            <div
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: '50%',
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="#F5A623" width="30" height="30">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+              </svg>
+            </div>
+          </Badge>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>小鲸记账</div>
+            <Space>
+              <span style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>{displayName}</span>
+              {isPremium && <CrownOutlined style={{ color: '#FFD700', fontSize: 16 }} />}
+            </Space>
             <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)', marginTop: 2 }}>
-              Colin记账 V1.0.0
+              {user?.email || 'Colin记账 V1.0.0'}
             </div>
           </div>
         </div>
@@ -444,6 +481,19 @@ function MobileProfileView() {
         {/* 功能菜单 */}
         <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
           <MobileMenuItem
+            label="账号信息"
+            subtitle={user?.email || ''}
+            onClick={() => setActiveView('accountInfo')}
+          />
+          <MobileMenuItem
+            label="会员中心"
+            subtitle={isPremium ? (profile?.membership_tier === 'lifetime' ? '终身会员' : '高级会员') : '免费版'}
+            onClick={() => navigate('/membership')}
+          />
+        </div>
+
+        <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', marginTop: 12 }}>
+          <MobileMenuItem
             label="分类管理"
             subtitle={`${categories.length}个分类`}
             onClick={() => setActiveView('categories')}
@@ -460,10 +510,34 @@ function MobileProfileView() {
           />
         </div>
 
+        {/* 账号操作 */}
+        <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', marginTop: 12 }}>
+          <MobileMenuItem
+            label="修改密码"
+            subtitle="发送密码重置邮件"
+            onClick={async () => {
+              if (user?.email) {
+                const { error } = await useAuthStore.getState().sendPasswordReset(user.email);
+                if (error) antMessage.error(error);
+                else antMessage.success('密码重置邮件已发送，请查收邮箱');
+              }
+            }}
+          />
+          <MobileMenuItem
+            label="退出登录"
+            subtitle=""
+            onClick={async () => {
+              await signOut();
+              navigate('/login', { replace: true });
+            }}
+            last
+          />
+        </div>
+
         {/* 关于 */}
         <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', marginTop: 12 }}>
           <MobileMenuItem
-            label="关于小鲸记账"
+            label="关于Colin记账"
             subtitle="V1.0.0"
             onClick={() => {}}
             last
@@ -471,6 +545,72 @@ function MobileProfileView() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// 账号信息子视图
+// ============================================================
+function MobileAccountInfoView({ onBack }: { onBack: () => void }) {
+  const { user, profile, updateProfile } = useAuthStore();
+  const [editing, setEditing] = useState(false);
+  const [displayName, setDisplayName] = useState(profile?.display_name || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await updateProfile({ display_name: displayName || undefined });
+    setSaving(false);
+    if (error) antMessage.error(error);
+    else {
+      antMessage.success('已更新');
+      setEditing(false);
+    }
+  };
+
+  return (
+    <MobileSettingsSheet title="账号信息" onBack={onBack}>
+      <div style={{ padding: 16 }}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>邮箱</div>
+          <div style={{ fontSize: 15, color: '#333' }}>{user?.email || '-'}</div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>昵称</div>
+          {editing ? (
+            <Space>
+              <Input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="输入昵称"
+                style={{ width: 200 }}
+              />
+              <Button size="small" type="primary" loading={saving} onClick={handleSave}>保存</Button>
+              <Button size="small" onClick={() => { setEditing(false); setDisplayName(profile?.display_name || ''); }}>取消</Button>
+            </Space>
+          ) : (
+            <Space>
+              <span style={{ fontSize: 15, color: '#333' }}>{profile?.display_name || '未设置'}</span>
+              <Button size="small" type="link" onClick={() => setEditing(true)}>编辑</Button>
+            </Space>
+          )}
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: '#999', marginBottom: 4 }}>会员等级</div>
+          <Space>
+            <span style={{ fontSize: 15, color: '#333' }}>
+              {profile?.membership_tier === 'lifetime' ? '终身会员' :
+               profile?.membership_tier === 'premium' ? '高级会员' : '免费版'}
+            </span>
+            {profile?.membership_tier === 'premium' && profile?.premium_expires_at && (
+              <span style={{ fontSize: 12, color: '#999' }}>
+                到期: {new Date(profile.premium_expires_at).toLocaleDateString('zh-CN')}
+              </span>
+            )}
+          </Space>
+        </div>
+      </div>
+    </MobileSettingsSheet>
   );
 }
 

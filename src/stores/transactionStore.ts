@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { syncManager } from '@/services/syncManager';
 import { getCachedRecords, cacheRecords, cacheRecord, removeCachedRecord } from '@/db/database';
+import { useAuthStore } from '@/stores/authStore';
 import type { Transaction, TransactionFormData, TransactionFilter } from '@/types';
 import type { Database } from '@/types/database';
 
@@ -44,7 +45,8 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
     // 尝试从本地缓存加载（瞬时渲染）
     if (page === 1) {
       try {
-        const cached = await getCachedRecords<Transaction>('transactions');
+        const userId = useAuthStore.getState().user?.id;
+        const cached = await getCachedRecords<Transaction>('transactions', userId);
         if (cached.length > 0) {
           // 应用基本筛选
           let filtered = cached;
@@ -105,7 +107,8 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
 
     // 更新本地缓存（后台操作，不阻塞 UI）
     if (data && page === 1) {
-      try { await cacheRecords('transactions', data as Transaction[]); } catch { /* ignore */ }
+      const userId = useAuthStore.getState().user?.id;
+      try { await cacheRecords('transactions', data as Transaction[], userId); } catch { /* ignore */ }
     }
   },
 
@@ -116,9 +119,12 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
       return null;
     }
 
+    const userId = useAuthStore.getState().user?.id;
+
     const { data: transaction, error } = await supabase
       .from('transactions')
       .insert({
+        user_id: userId,
         account_id: formData.account_id,
         category_id: formData.category_id,
         amount,
@@ -134,6 +140,7 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
       const tempId = crypto.randomUUID();
       const tempTx: Transaction = {
         id: tempId,
+        user_id: userId,
         account_id: formData.account_id,
         category_id: formData.category_id,
         amount,
@@ -149,6 +156,7 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
       }));
       await syncManager.writeOptimistic('transactions', 'INSERT', tempId, {
         id: tempId,
+        user_id: userId,
         account_id: formData.account_id,
         category_id: formData.category_id,
         amount,
@@ -231,7 +239,8 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
     if (error) {
       // 离线降级：从缓存筛选
       try {
-        const cached = await getCachedRecords<Transaction>('transactions');
+        const userId = useAuthStore.getState().user?.id;
+        const cached = await getCachedRecords<Transaction>('transactions', userId);
         return cached.filter((t) => t.date >= from && t.date <= to);
       } catch {
         set({ error: error.message });
@@ -252,7 +261,8 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
     if (error) {
       // 离线降级：从缓存筛选
       try {
-        const cached = await getCachedRecords<Transaction>('transactions');
+        const userId = useAuthStore.getState().user?.id;
+        const cached = await getCachedRecords<Transaction>('transactions', userId);
         return cached.filter((t) => t.date >= from && t.date <= to);
       } catch {
         set({ error: error.message });
@@ -274,7 +284,8 @@ export const useTransactionStore = create<TransactionStore>((set) => ({
 
     // 离线降级：从本地缓存统计
     try {
-      const cached = await getCachedRecords<Transaction>('transactions');
+      const userId = useAuthStore.getState().user?.id;
+      const cached = await getCachedRecords<Transaction>('transactions', userId);
       return new Set(cached.map((t) => t.date)).size;
     } catch {
       return 0;

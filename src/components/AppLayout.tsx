@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Drawer, Button } from 'antd';
-import { MenuOutlined } from '@ant-design/icons';
+import { Layout, Menu, Dropdown, Avatar, Space } from 'antd';
+import type { MenuProps } from 'antd';
+import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import {
   HomeOutlined,
   UnorderedListOutlined,
@@ -11,6 +12,7 @@ import {
   RobotOutlined,
 } from '@ant-design/icons';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useAuthStore } from '@/stores/authStore';
 import BottomTabBar from '@/components/BottomTabBar';
 import SyncStatusBar from '@/components/SyncStatusBar';
 import MobileSplash from '@/components/MobileSplash';
@@ -41,6 +43,30 @@ function DesktopLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedKey = getSelectedKey(location.pathname);
+  const profile = useAuthStore((s) => s.profile);
+  const user = useAuthStore((s) => s.user);
+  const signOut = useAuthStore((s) => s.signOut);
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || '用户';
+
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'info',
+      label: displayName,
+      icon: <UserOutlined />,
+      disabled: true,
+    },
+    { type: 'divider' },
+    {
+      key: 'logout',
+      label: '退出登录',
+      icon: <LogoutOutlined />,
+      danger: true,
+      onClick: async () => {
+        await signOut();
+        navigate('/login', { replace: true });
+      },
+    },
+  ];
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -60,7 +86,7 @@ function DesktopLayout() {
             src="./logo.svg"
             alt="Colin记账"
             style={{
-              height: 252,
+              height: 48,
               objectFit: 'contain',
             }}
           />
@@ -81,12 +107,21 @@ function DesktopLayout() {
             borderBottom: '1px solid #f0f0f0',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             fontSize: 16,
             fontWeight: 500,
           }}
         >
-          {menuItems.find((m) => m.key === selectedKey)?.label || 'Colin记账'}
-          <SyncStatusBar />
+          <Space>
+            <span>{menuItems.find((m) => m.key === selectedKey)?.label || 'Colin记账'}</span>
+            <SyncStatusBar />
+          </Space>
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+            <Space style={{ cursor: 'pointer', fontSize: 14 }}>
+              <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#FFD93D', color: '#333' }} />
+              <span>{displayName}</span>
+            </Space>
+          </Dropdown>
         </Header>
         <Content style={{ margin: 16, padding: 24, background: '#fff', borderRadius: 8, overflowY: 'auto', overflowX: 'hidden' }}>
           <Outlet />
