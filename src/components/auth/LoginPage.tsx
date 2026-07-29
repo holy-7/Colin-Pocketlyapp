@@ -33,7 +33,11 @@ export default function LoginPage() {
     }
 
     if (result?.error) {
-      message.error(result.error);
+      if (mode === 'signIn') {
+        message.error('账户或者密码错误，请重新登录！');
+      } else {
+        message.error(result.error);
+      }
     } else {
       if (mode === 'forgotPassword') {
         message.success('密码重置邮件已发送，请查收邮箱');

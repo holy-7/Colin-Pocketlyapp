@@ -42,6 +42,7 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
     const { data, error } = await supabase
       .from('accounts')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at');
 
     if (error) {

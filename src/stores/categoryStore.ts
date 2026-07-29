@@ -41,10 +41,11 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       }
     } catch { /* 缓存不可用时忽略 */ }
 
-    // 后台从 Supabase 获取最新数据
+    // 后台从 Supabase 获取最新数据（显式过滤 user_id，避免 RLS 中 user_id IS NULL 模板行重复）
     const { data, error } = await supabase
       .from('categories')
       .select('*')
+      .eq('user_id', userId)
       .order('type')
       .order('name');
 

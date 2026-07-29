@@ -79,13 +79,14 @@ CREATE POLICY "sub_select" ON user_subscriptions FOR SELECT USING (auth.uid() = 
 -- check_trial_expiry() — 检查并降级过期试用
 -- upgrade_membership(target_tier, target_plan) — 安全执行会员升级
 
--- 6. handle_new_user 触发器（仅创建 profile + 7 天试用，不再复制分类/账户）
--- 模板数据（user_id IS NULL）通过 RLS SELECT 策略对所有已登录用户全局可见
+-- 6. handle_new_user 触发器：创建 profile（7天试用）+ 12个默认分类 + 4个默认账户
+-- 模板数据（user_id IS NULL）作为补充通过 RLS SELECT 策略对所有已登录用户全局可见
 --
--- 当前 SQL（已在数据库更新）：
+-- 当前 SQL（已在数据库更新，2026-07-29）：
 -- CREATE OR REPLACE FUNCTION public.handle_new_user()
 -- RETURNS trigger AS $$
 -- BEGIN
+--   -- 1. 创建用户档案（7天试用）
 --   INSERT INTO public.profiles (id, display_name, membership_tier, premium_expires_at)
 --   VALUES (
 --     NEW.id,
@@ -93,6 +94,32 @@ CREATE POLICY "sub_select" ON user_subscriptions FOR SELECT USING (auth.uid() = 
 --     'premium',
 --     NOW() + INTERVAL '7 days'
 --   );
+--
+--   -- 2. 创建默认支出分类（8个）
+--   INSERT INTO public.categories (user_id, name, type, icon, color, is_default) VALUES
+--     (NEW.id, '餐饮', 'expense', 'CoffeeOutlined', '#FF6B6B', true),
+--     (NEW.id, '交通', 'expense', 'CarOutlined', '#4ECDC4', true),
+--     (NEW.id, '住房', 'expense', 'HomeOutlined', '#45B7D1', true),
+--     (NEW.id, '娱乐', 'expense', 'SmileOutlined', '#F7DC6F', true),
+--     (NEW.id, '购物', 'expense', 'ShoppingOutlined', '#BB8FCE', true),
+--     (NEW.id, '医疗', 'expense', 'MedicineBoxOutlined', '#E74C3C', true),
+--     (NEW.id, '教育', 'expense', 'BookOutlined', '#3498DB', true),
+--     (NEW.id, '其他支出', 'expense', 'EllipsisOutlined', '#95A5A6', true);
+--
+--   -- 3. 创建默认收入分类（4个）
+--   INSERT INTO public.categories (user_id, name, type, icon, color, is_default) VALUES
+--     (NEW.id, '工资', 'income', 'DollarOutlined', '#27AE60', true),
+--     (NEW.id, '奖金', 'income', 'GiftOutlined', '#2ECC71', true),
+--     (NEW.id, '投资', 'income', 'RiseOutlined', '#1ABC9C', true),
+--     (NEW.id, '其他收入', 'income', 'EllipsisOutlined', '#7DCEA0', true);
+--
+--   -- 4. 创建默认账户（4个）
+--   INSERT INTO public.accounts (user_id, name, type, balance, currency) VALUES
+--     (NEW.id, '现金', '现金', 0, 'CNY'),
+--     (NEW.id, '银行卡', '银行卡', 0, 'CNY'),
+--     (NEW.id, '支付宝', '支付宝', 0, 'CNY'),
+--     (NEW.id, '微信', '微信', 0, 'CNY');
+--
 --   RETURN NEW;
 -- END;
 -- $$ LANGUAGE plpgsql SECURITY DEFINER;
