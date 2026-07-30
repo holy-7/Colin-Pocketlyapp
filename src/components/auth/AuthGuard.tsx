@@ -6,8 +6,9 @@ import type { ReactNode } from 'react';
 // ============================================================
 // AuthGuard — 路由守卫
 // 未登录 → 重定向到 /login
+// 已登录但邮箱未验证 → 重定向到 /login（LoginPage 自动展示验证码界面）
 // 初始化中 → 全屏加载
-// 已登录 → 渲染子组件
+// 已登录且已验证 → 渲染子组件
 // ============================================================
 
 interface AuthGuardProps {
@@ -32,6 +33,11 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     return <Navigate to="/login" replace />;
   }
 
-  // 已登录
+  // 已登录但邮箱未验证 → 重定向到登录页，LoginPage 自动检测并展示验证码
+  if (!user.email_confirmed_at) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // 已登录且已验证
   return <>{children}</>;
 }

@@ -19,9 +19,13 @@ interface AuthState {
   // --- 认证操作 ---
   initialize: () => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error?: string }>;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ error?: string; needVerification?: boolean }>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<{ error?: string }>;
+
+  // --- 邮箱验证 ---
+  verifyEmail: (email: string, token: string) => Promise<{ error?: string }>;
+  resendVerificationCode: (email: string) => Promise<{ error?: string }>;
 
   // --- 档案操作 ---
   fetchProfile: () => Promise<void>;
@@ -91,9 +95,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { error: error.message };
     }
 
+    // 注册成功 — 保存 user（session 为 null，需验证邮箱后才可用）
     if (data.user) {
       set({ user: data.user, session: data.session });
-      await get().fetchProfile();
     }
 
     set({ loading: false });
@@ -117,6 +121,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     if (data.user) {
       set({ user: data.user, session: data.session });
+
+      // 邮箱未验证 → 拦截登录，要求先验证
+      if (!data.user.email_confirmed_at) {
+        set({ loading: false });
+        return { needVerification: true };
+      }
+
       await get().fetchProfile();
     }
 
@@ -142,6 +153,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   sendPasswordReset: async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + '/#/login',
+    });
+    if (error) return { error: error.message };
+    return {};
+  },
+
+  // ============================================================
+  // 邮箱验证码 — 验证注册确认码
+  // ============================================================
+  verifyEmail: async (email, token) => {
+    set({ loading: true });
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'signup',
+    });
+
+    if (error) {
+      set({ loading: false });
+      return { error: error.message };
+    }
+
+    // 验证成功 → 保存新 session（email_confirmed_at 已设置）
+    if (data.session) {
+      set({ user: data.user, session: data.session });
+      await get().fetchProfile();
+    }
+
+    set({ loading: false });
+    return {};
+  },
+
+  // ============================================================
+  // 重新发送验证码
+  // ============================================================
+  resendVerificationCode: async (email) => {
+    const { error } = await supabase.auth.resend({
+      email,
+      type: 'signup',
     });
     if (error) return { error: error.message };
     return {};

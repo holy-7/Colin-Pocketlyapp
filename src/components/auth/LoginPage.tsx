@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, App } from 'antd';
 import { MailOutlined, LockOutlined, UserOutlined } from '@ant-design/icons';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuthStore } from '@/stores/authStore';
+import VerifyCodeInput from './VerifyCodeInput';
 
 const { Title, Text } = Typography;
 
-type FormMode = 'signIn' | 'signUp' | 'forgotPassword';
+type FormMode = 'signIn' | 'signUp' | 'forgotPassword' | 'verifyEmail';
 
 // ============================================================
 // LoginPage — 响应式登录/注册页
@@ -19,10 +20,22 @@ export default function LoginPage() {
   const { message } = App.useApp();
   const [mode, setMode] = useState<FormMode>('signIn');
   const [form] = Form.useForm();
-  const { signIn, signUp, sendPasswordReset, loading } = useAuthStore();
+  const [verifyEmailValue, setVerifyEmailValue] = useState('');
+  const {
+    signIn, signUp, sendPasswordReset, verifyEmail, resendVerificationCode, loading,
+  } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+
+  // 检测已登录但未验证邮箱的用户（关闭App后回来）
+  useEffect(() => {
+    if (user && !user.email_confirmed_at) {
+      setMode('verifyEmail');
+      setVerifyEmailValue(user.email || '');
+    }
+  }, [user]);
 
   const handleSubmit = async (values: { email: string; password: string; displayName?: string }) => {
-    let result: { error?: string };
+    let result: { error?: string; needVerification?: boolean };
 
     if (mode === 'signIn') {
       result = await signIn(values.email, values.password);
@@ -38,19 +51,47 @@ export default function LoginPage() {
       } else {
         message.error(result.error);
       }
+    } else if (result?.needVerification) {
+      // 邮箱未验证 → 切换到验证码界面
+      setVerifyEmailValue(values.email);
+      setMode('verifyEmail');
+      form.resetFields();
     } else {
       if (mode === 'forgotPassword') {
         message.success('密码重置邮件已发送，请查收邮箱');
         setMode('signIn');
         form.resetFields();
       } else if (mode === 'signUp') {
-        message.success('注册成功！正在为您准备默认数据...');
-        navigate('/', { replace: true });
+        message.success('验证码已发送至您的邮箱');
+        setVerifyEmailValue(values.email);
+        setMode('verifyEmail');
+        form.resetFields();
       } else {
         message.success('登录成功！');
         navigate('/', { replace: true });
       }
     }
+  };
+
+  // 验证码提交
+  const handleVerifyCode = async (code: string) => {
+    const result = await verifyEmail(verifyEmailValue, code);
+    if (result?.error) {
+      message.error(result.error);
+      throw new Error(result.error);
+    }
+    message.success('验证成功！正在准备默认数据...');
+    navigate('/', { replace: true });
+  };
+
+  // 重新发送验证码
+  const handleResendCode = async () => {
+    const result = await resendVerificationCode(verifyEmailValue);
+    if (result?.error) {
+      message.error(result.error);
+      throw new Error(result.error);
+    }
+    message.success('验证码已重新发送');
   };
 
   const toggleMode = (newMode: FormMode) => {
@@ -59,7 +100,15 @@ export default function LoginPage() {
   };
 
   // --- 表单内容 ---
-  const formContent = (
+  const formContent = mode === 'verifyEmail' ? (
+    <VerifyCodeInput
+      email={verifyEmailValue}
+      onSubmit={handleVerifyCode}
+      onResend={handleResendCode}
+      onBack={() => { setMode('signIn'); form.resetFields(); }}
+      loading={loading}
+    />
+  ) : (
     <>
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <Title level={2} style={{ marginBottom: 8, color: '#333', fontSize: 28 }}>
