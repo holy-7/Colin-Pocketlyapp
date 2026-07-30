@@ -148,7 +148,7 @@ function CategorySettings() {
         style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
         styles={{ body: { flex: 1, minHeight: 0, overflow: 'hidden', padding: 24 } }}
       >
-        <Table columns={columns} dataSource={categories} rowKey="id" pagination={{ pageSize: 10 }} size="middle" scroll={{ y: tableScrollY }} />
+        <Table columns={columns} dataSource={categories} rowKey="id" pagination={{ pageSize: 50 }} size="middle" scroll={{ y: tableScrollY }} />
 
         <Modal
           title={editing ? '编辑分类' : '添加分类'}
@@ -362,6 +362,7 @@ function MobileProfileView() {
   const isPremium = profile?.membership_tier === 'premium' || profile?.membership_tier === 'lifetime';
   const [activeView, setActiveView] = useState<'menu' | 'categories' | 'accounts' | 'export' | 'accountInfo'>('menu');
   const [uniqueDays, setUniqueDays] = useState(0);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   // 统计天数
   useEffect(() => {
@@ -514,14 +515,8 @@ function MobileProfileView() {
         <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', marginTop: 12 }}>
           <MobileMenuItem
             label="修改密码"
-            subtitle="发送密码重置邮件"
-            onClick={async () => {
-              if (user?.email) {
-                const { error } = await useAuthStore.getState().sendPasswordReset(user.email);
-                if (error) antMessage.error(error);
-                else antMessage.success('密码重置邮件已发送，请查收邮箱');
-              }
-            }}
+            subtitle="验证原密码后设置新密码"
+            onClick={() => setShowChangePassword(true)}
           />
           <MobileMenuItem
             label="退出登录"
@@ -544,6 +539,12 @@ function MobileProfileView() {
           />
         </div>
       </div>
+
+      {/* 修改密码弹窗 */}
+      <ChangePasswordModal
+        open={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+      />
     </div>
   );
 }
@@ -611,6 +612,85 @@ function MobileAccountInfoView({ onBack }: { onBack: () => void }) {
         </div>
       </div>
     </MobileSettingsSheet>
+  );
+}
+
+// ============================================================
+// 修改密码弹窗
+// ============================================================
+
+function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [oldPwd, setOldPwd] = useState('');
+  const [newPwd, setNewPwd] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setError('');
+    if (newPwd.length < 8) { setError('新密码至少 8 位'); return; }
+    if (newPwd !== confirmPwd) { setError('两次输入的密码不一致'); return; }
+    setSubmitting(true);
+    const { error: err } = await useAuthStore.getState().changePassword(oldPwd, newPwd);
+    setSubmitting(false);
+    if (err) { setError(err); return; }
+    antMessage.success('密码已修改');
+    setOldPwd(''); setNewPwd(''); setConfirmPwd('');
+    onClose();
+  };
+
+  const handleClose = () => {
+    setOldPwd(''); setNewPwd(''); setConfirmPwd('');
+    setError('');
+    onClose();
+  };
+
+  return (
+    <Modal
+      title="修改密码"
+      open={open}
+      onCancel={handleClose}
+      footer={null}
+      destroyOnClose
+    >
+      <Form layout="vertical" style={{ marginTop: 16 }}>
+        <Form.Item label="原密码">
+          <Input.Password
+            placeholder="请输入原密码"
+            value={oldPwd}
+            onChange={(e) => { setOldPwd(e.target.value); setError(''); }}
+          />
+        </Form.Item>
+        <Form.Item label="新密码">
+          <Input.Password
+            placeholder="新密码（至少8位）"
+            value={newPwd}
+            onChange={(e) => { setNewPwd(e.target.value); setError(''); }}
+          />
+        </Form.Item>
+        <Form.Item label="确认新密码">
+          <Input.Password
+            placeholder="再次输入新密码"
+            value={confirmPwd}
+            onChange={(e) => { setConfirmPwd(e.target.value); setError(''); }}
+            onPressEnter={handleSubmit}
+          />
+        </Form.Item>
+        {error && (
+          <div style={{ color: '#ff4d4f', marginBottom: 16, fontSize: 14 }}>{error}</div>
+        )}
+        <Button
+          type="primary"
+          block
+          loading={submitting}
+          disabled={!oldPwd || !newPwd || !confirmPwd}
+          onClick={handleSubmit}
+          style={{ height: 44 }}
+        >
+          确认修改
+        </Button>
+      </Form>
+    </Modal>
   );
 }
 

@@ -27,6 +27,10 @@ interface AuthState {
   verifyEmail: (email: string, token: string) => Promise<{ error?: string }>;
   resendVerificationCode: (email: string) => Promise<{ error?: string }>;
 
+  // --- 密码重置 ---
+  resetToDefaultPassword: (tokenHash: string) => Promise<{ error?: string }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ error?: string }>;
+
   // --- 档案操作 ---
   fetchProfile: () => Promise<void>;
   updateProfile: (data: { display_name?: string }) => Promise<{ error?: string }>;
@@ -193,6 +197,67 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       type: 'signup',
     });
     if (error) return { error: error.message };
+    return {};
+  },
+
+  // ============================================================
+  // 密码重置 — 验证恢复 token 后重置为默认密码
+  // ============================================================
+  resetToDefaultPassword: async (tokenHash) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: 'recovery',
+    });
+
+    if (error) {
+      const msg = error.message.includes('No API key') || error.message.includes('apikey')
+        ? '服务配置错误，请稍后重试'
+        : '链接已过期或无效，请重新发送';
+      return { error: msg };
+    }
+
+    if (data.session) {
+      set({ user: data.user, session: data.session });
+    }
+
+    // 重置为默认密码
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: '123456789',
+    });
+
+    if (updateError) return { error: updateError.message };
+    return {};
+  },
+
+  // ============================================================
+  // 直接修改密码 — 验证原密码后更新
+  // ============================================================
+  changePassword: async (currentPassword, newPassword) => {
+    const email = get().user?.email;
+    if (!email) return { error: '未登录' };
+
+    set({ loading: true });
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password: currentPassword,
+    });
+
+    if (signInError) {
+      set({ loading: false });
+      return { error: '原密码错误' };
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      set({ loading: false });
+      return { error: updateError.message };
+    }
+
+    set({ loading: false });
     return {};
   },
 

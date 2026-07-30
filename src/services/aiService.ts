@@ -173,7 +173,7 @@ async function runToolLoop(
     round++;
 
     const response = await client.chat.completions.create({
-      model: 'agnes-2.0-flash',
+      model: 'qwen3.7-plus',
       max_tokens: MAX_OUTPUT_TOKENS,
       messages: currentMessages,
       tools: OPENAI_TOOLS,
@@ -250,7 +250,7 @@ async function runToolLoop(
   });
 
   const finalResponse = await client.chat.completions.create({
-    model: 'agnes-2.0-flash',
+    model: 'qwen3.7-plus',
     max_tokens: MAX_OUTPUT_TOKENS,
     messages: currentMessages,
   });

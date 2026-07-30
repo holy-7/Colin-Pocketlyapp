@@ -27,11 +27,46 @@ interface EmailPayload {
   };
 }
 
+// 构建重置密码链接：优先用客户端 redirect_to，回退则用 siteUrl 的 origin
+function getSafeRedirectUrl(redirect_to: string, siteUrl: string): string {
+  if (redirect_to) {
+    try {
+      const parsed = new URL(redirect_to);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        return redirect_to;
+      }
+    } catch { /* ignore */ }
+    if (redirect_to.startsWith('/')) {
+      return siteUrl.replace(/\/+$/, '') + redirect_to;
+    }
+  }
+  // 回退：用 siteUrl 的 origin 拼接 /#/login
+  try {
+    const parsed = new URL(siteUrl);
+    return `${parsed.origin}/#/login`;
+  } catch {
+    return siteUrl;
+  }
+}
+
+// HTML 属性转义（防止 <a href> 属性注入）
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // 邮件模板
 function buildEmail(email_data: EmailPayload["email_data"]) {
   const actionType = email_data.email_action_type;
   const token = email_data.token;
   const siteUrl = email_data.site_url;
+  const redirectTo = getSafeRedirectUrl(email_data.redirect_to, siteUrl);
+
+  console.log('send-email hook:', {
+    actionType,
+    redirect_to: email_data.redirect_to,
+    siteUrl,
+    redirectTo,
+  });
 
   switch (actionType) {
     case "signup":
@@ -56,7 +91,7 @@ function buildEmail(email_data: EmailPayload["email_data"]) {
           <h2 style="color:#333;margin-bottom:16px">重置你的密码</h2>
           <p style="color:#666;font-size:15px">点击下方按钮设置新密码：</p>
           <div style="text-align:center;margin:24px 0">
-            <a href="${siteUrl}/#/login?token_hash=${email_data.token_hash}&type=recovery" style="display:inline-block;background:#FFD93D;color:#333;padding:12px 32px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold">重置密码</a>
+            <a href="${safeLink}" style="display:inline-block;background:#FFD93D;color:#333;padding:12px 32px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold">重置密码</a>
           </div>
           <p style="color:#999;font-size:13px">如果你没有请求重置密码，请忽略此邮件。</p>
         </div>`,

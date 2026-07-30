@@ -1,14 +1,69 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Card, Typography, App } from 'antd';
-import { MailOutlined, LockOutlined, UserOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, App, Spin } from 'antd';
+import { MailOutlined, LockOutlined, UserOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuthStore } from '@/stores/authStore';
 import VerifyCodeInput from './VerifyCodeInput';
 
 const { Title, Text } = Typography;
 
-type FormMode = 'signIn' | 'signUp' | 'forgotPassword' | 'verifyEmail';
+type FormMode = 'signIn' | 'signUp' | 'forgotPassword' | 'verifyEmail' | 'resetPassword';
+
+// ============================================================
+// ResetPasswordResult — 密码重置结果展示
+// ============================================================
+
+function ResetPasswordResult({
+  status,
+  message: msg,
+  onBack,
+}: {
+  status: 'loading' | 'success' | 'error';
+  message: string;
+  onBack: () => void;
+}) {
+  if (status === 'loading') {
+    return (
+      <div style={{ textAlign: 'center', padding: 48 }}>
+        <Spin size="large" />
+        <Text type="secondary" style={{ display: 'block', marginTop: 16, fontSize: 15 }}>
+          正在重置密码...
+        </Text>
+      </div>
+    );
+  }
+
+  if (status === 'success') {
+    return (
+      <div style={{ textAlign: 'center' }}>
+        <CheckCircleOutlined style={{ fontSize: 64, color: '#52c41a', marginBottom: 16 }} />
+        <Title level={3} style={{ marginBottom: 8 }}>密码重置成功</Title>
+        <Text type="secondary" style={{ fontSize: 15 }}>
+          密码已重置为默认密码，请登录后修改
+        </Text>
+        <div style={{ marginTop: 24 }}>
+          <Button type="primary" onClick={onBack} style={{ height: 48, fontSize: 16, padding: '0 32px' }}>
+            去登录
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <CloseCircleOutlined style={{ fontSize: 64, color: '#ff4d4f', marginBottom: 16 }} />
+      <Title level={3} style={{ marginBottom: 8 }}>重置失败</Title>
+      <Text type="secondary" style={{ fontSize: 15 }}>{msg}</Text>
+      <div style={{ marginTop: 24 }}>
+        <Button type="primary" onClick={onBack} style={{ height: 48, fontSize: 16, padding: '0 32px' }}>
+          返回登录
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 // ============================================================
 // LoginPage — 响应式登录/注册页
@@ -22,7 +77,8 @@ export default function LoginPage() {
   const [form] = Form.useForm();
   const [verifyEmailValue, setVerifyEmailValue] = useState('');
   const {
-    signIn, signUp, sendPasswordReset, verifyEmail, resendVerificationCode, loading,
+    signIn, signUp, sendPasswordReset, verifyEmail, resendVerificationCode,
+    resetToDefaultPassword, loading,
   } = useAuthStore();
   const user = useAuthStore((s) => s.user);
 
@@ -33,6 +89,43 @@ export default function LoginPage() {
       setVerifyEmailValue(user.email || '');
     }
   }, [user]);
+
+  const resetTriggered = useRef(false);
+  const [resetStatus, setResetStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [resetMessage, setResetMessage] = useState('');
+
+  // 检测 URL 中的密码重置回调参数 → 自动重置为默认密码（仅执行一次）
+  useEffect(() => {
+    if (resetTriggered.current) return;
+    const hash = window.location.hash;
+    const queryIndex = hash.indexOf('?');
+    if (queryIndex === -1) return;
+    const params = new URLSearchParams(hash.substring(queryIndex));
+    const type = params.get('type');
+    const tokenHash = params.get('token_hash');
+    const errorCode = params.get('error_code');
+
+    if (type === 'recovery' && errorCode) {
+      setMode('resetPassword');
+      setResetStatus('error');
+      setResetMessage('链接已过期或无效，请重新发送');
+      return;
+    }
+    if (type !== 'recovery' || !tokenHash) return;
+
+    resetTriggered.current = true;
+    setMode('resetPassword');
+    setResetStatus('loading');
+    resetToDefaultPassword(tokenHash).then((r) => {
+      if (r?.error) {
+        setResetStatus('error');
+        setResetMessage(r.error);
+      } else {
+        setResetStatus('success');
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (values: { email: string; password: string; displayName?: string }) => {
     let result: { error?: string; needVerification?: boolean };
@@ -107,6 +200,12 @@ export default function LoginPage() {
       onResend={handleResendCode}
       onBack={() => { setMode('signIn'); form.resetFields(); }}
       loading={loading}
+    />
+  ) : mode === 'resetPassword' ? (
+    <ResetPasswordResult
+      status={resetStatus}
+      message={resetMessage}
+      onBack={() => { setMode('signIn'); form.resetFields(); }}
     />
   ) : (
     <>
