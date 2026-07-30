@@ -61,12 +61,17 @@ function buildEmail(email_data: EmailPayload["email_data"]) {
   const siteUrl = email_data.site_url;
   const redirectTo = getSafeRedirectUrl(email_data.redirect_to, siteUrl);
 
-  console.log('send-email hook:', {
+  console.log('send-email hook:', JSON.stringify({
     actionType,
     redirect_to: email_data.redirect_to,
     siteUrl,
     redirectTo,
-  });
+  }));
+
+  // 构建密码重置链接（redirectTo 可能不带 hash 路由，统一补上 #/login）
+  const recoveryBase = redirectTo.replace(/\/+$/, '');
+  const resetLink = `${recoveryBase}/#/login?token_hash=${email_data.token_hash}&type=recovery`;
+  const safeLink = escapeAttr(resetLink);
 
   switch (actionType) {
     case "signup":

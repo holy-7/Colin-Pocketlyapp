@@ -94,27 +94,51 @@ export default function LoginPage() {
   const [resetStatus, setResetStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [resetMessage, setResetMessage] = useState('');
 
-  // 检测 URL 中的密码重置回调参数 → 自动重置为默认密码（仅执行一次）
+  // 检测 URL 中的密码重置参数（hash 或 search）→ 自动重置密码（仅执行一次）
   useEffect(() => {
     if (resetTriggered.current) return;
-    const hash = window.location.hash;
-    const queryIndex = hash.indexOf('?');
-    if (queryIndex === -1) return;
-    const params = new URLSearchParams(hash.substring(queryIndex));
-    const type = params.get('type');
-    const tokenHash = params.get('token_hash');
-    const errorCode = params.get('error_code');
 
-    if (type === 'recovery' && errorCode) {
-      setMode('resetPassword');
+    // 尝试从 hash 或 search 中提取 recovery 参数
+    const getRecoveryParams = (): { tokenHash: string; errorCode: string } | null => {
+      // 优先从 hash 中取（正常路径：/#/login?token_hash=...&type=recovery）
+      const hash = window.location.hash;
+      const hashQuery = hash.indexOf('?');
+      if (hashQuery !== -1) {
+        const p = new URLSearchParams(hash.substring(hashQuery));
+        if (p.get('type') === 'recovery') {
+          return { tokenHash: p.get('token_hash') || '', errorCode: p.get('error_code') || '' };
+        }
+      }
+      // 兜底：从 search 中取（# 被截掉的情况：/?token_hash=...&type=recovery）
+      const search = window.location.search;
+      if (search) {
+        const p = new URLSearchParams(search);
+        if (p.get('type') === 'recovery') {
+          return { tokenHash: p.get('token_hash') || '', errorCode: p.get('error_code') || '' };
+        }
+      }
+      return null;
+    };
+
+    const recoveryParams = getRecoveryParams();
+    if (!recoveryParams) return;
+
+    const { tokenHash, errorCode } = recoveryParams;
+
+    resetTriggered.current = true;
+    setMode('resetPassword');
+
+    if (errorCode) {
       setResetStatus('error');
       setResetMessage('链接已过期或无效，请重新发送');
       return;
     }
-    if (type !== 'recovery' || !tokenHash) return;
+    if (!tokenHash) {
+      setResetStatus('error');
+      setResetMessage('链接无效，请重新发送');
+      return;
+    }
 
-    resetTriggered.current = true;
-    setMode('resetPassword');
     setResetStatus('loading');
     resetToDefaultPassword(tokenHash).then((r) => {
       if (r?.error) {
