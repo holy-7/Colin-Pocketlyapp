@@ -634,9 +634,11 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
     const { error: err } = await useAuthStore.getState().changePassword(oldPwd, newPwd);
     setSubmitting(false);
     if (err) { setError(err); return; }
-    antMessage.success('密码已修改');
-    setOldPwd(''); setNewPwd(''); setConfirmPwd('');
+    antMessage.success('密码已修改，请重新登录');
     onClose();
+    // 退出登录并跳转到登录页
+    await useAuthStore.getState().signOut();
+    navigate('/login', { replace: true });
   };
 
   const handleClose = () => {
