@@ -75,7 +75,6 @@ jobs:
           exit ${PIPESTATUS[0]}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEBUG: electron-builder
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
