@@ -74,6 +74,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEBUG: electron-builder
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
 
       - name: Create ZIP archive
         run: |
