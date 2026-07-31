@@ -39,9 +39,14 @@
       "signAndEditExecutable": false
     },
     "mac": {
-      "target": "dmg",
+      "target": {
+        "target": "dmg",
+        "arch": ["arm64"]
+      },
       "icon": "resources/logo.png",
-      "identity": null
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "nsis": {
       "oneClick": false,
