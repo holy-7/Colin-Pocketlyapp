@@ -19,4 +19,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on(channel, (_event, ...args) => func(...args));
     }
   },
+
+  // ===== 自动更新 API =====
+  onUpdateAvailable: (cb: (info: unknown) => void) => {
+    ipcRenderer.on('update-available', (_event, info) => cb(info));
+  },
+  onUpdateNotAvailable: (cb: (info: unknown) => void) => {
+    ipcRenderer.on('update-not-available', (_event, info) => cb(info));
+  },
+  onDownloadProgress: (cb: (progress: { percent: number }) => void) => {
+    ipcRenderer.on('download-progress', (_event, progress) => cb(progress));
+  },
+  onUpdateDownloaded: (cb: (info: unknown) => void) => {
+    ipcRenderer.on('update-downloaded', (_event, info) => cb(info));
+  },
+  onUpdateError: (cb: (msg: string) => void) => {
+    ipcRenderer.on('update-error', (_event, msg) => cb(msg));
+  },
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
+  getVersion: () => ipcRenderer.invoke('get-version'),
 });

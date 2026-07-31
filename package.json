@@ -24,18 +24,23 @@
     "directories": {
       "output": "release"
     },
+    "publish": {
+      "provider": "github",
+      "owner": "holy-7",
+      "repo": "Colin-Pocketlyapp"
+    },
     "files": [
       "dist/**/*",
       "dist-electron/**/*"
     ],
     "win": {
       "target": "nsis",
-      "icon": "resources/icon.png",
+      "icon": "resources/logo.ico",
       "signAndEditExecutable": false
     },
     "mac": {
       "target": "dmg",
-      "icon": "resources/icon.png",
+      "icon": "resources/logo.png",
       "identity": null
     },
     "nsis": {
@@ -49,6 +54,7 @@
     "antd": "^5.22.0",
     "dayjs": "^1.11.13",
     "dexie": "^4.0.8",
+    "electron-updater": "^6.8.9",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "openai": "^6.49.0",

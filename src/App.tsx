@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Spin } from 'antd';
 import AppLayout from '@/components/AppLayout';
+import UpdateNotification from '@/components/UpdateNotification';
 import AuthGuard from '@/components/auth/AuthGuard';
 import LoginPage from '@/components/auth/LoginPage';
 import HomePage from '@/pages/HomePage';
@@ -67,6 +68,7 @@ export default function App() {
 
   return (
     <SyncProvider>
+      <UpdateNotification />
       <HashRouter>
         <Routes>
           {/* 登录页 — 无需认证 */}

@@ -16,7 +16,7 @@ jobs:
 
       - run: npm ci
 
-      - name: Build Desktop App
+      - name: Build Desktop App (Windows)
         run: npm run package:win
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -24,20 +24,14 @@ jobs:
           VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
           VITE_AI_API_BASE_URL: ${{ secrets.VITE_AI_API_BASE_URL }}
 
-      - name: Install ossutil
-        run: |
-          Invoke-WebRequest -Uri "https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil-v1.7.19-windows-amd64.zip" -OutFile "$env:RUNNER_TEMP\ossutil.zip"
-          Expand-Archive -Path "$env:RUNNER_TEMP\ossutil.zip" -DestinationPath "$env:RUNNER_TEMP\ossutil"
-          echo "$env:RUNNER_TEMP\ossutil" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Upload to OSS
-        env:
-          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
-          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
-          OSS_ENDPOINT: ${{ secrets.OSS_ENDPOINT }}
-        run: |
-          ossutil config -e $env:OSS_ENDPOINT -i $env:OSS_ACCESS_KEY_ID -k $env:OSS_ACCESS_KEY_SECRET
-          ossutil cp release/*.exe oss://colin-accounting/releases/win/ --acl public-read
+      - name: Upload artifacts for release
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
 
   build-macos:
     runs-on: macos-latest
@@ -50,7 +44,7 @@ jobs:
 
       - run: npm ci
 
-      - name: Build Desktop App
+      - name: Build Desktop App (macOS)
         run: npm run package:mac
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -58,17 +52,37 @@ jobs:
           VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
           VITE_AI_API_BASE_URL: ${{ secrets.VITE_AI_API_BASE_URL }}
 
-      - name: Install ossutil
-        run: |
-          curl -L "https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil-v1.7.19-darwin-amd64.zip" -o /tmp/ossutil.zip
-          unzip /tmp/ossutil.zip -d /tmp/ossutil
-          echo "/tmp/ossutil" >> $GITHUB_PATH
+      - name: Upload artifacts for release
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: |
+            release/*.dmg
+            release/*.blockmap
+            release/latest-mac.yml
 
-      - name: Upload to OSS
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: release
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-installer
+          path: release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
+        with:
+          files: release/*
+          generate_release_notes: true
         env:
-          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
-          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
-          OSS_ENDPOINT: ${{ secrets.OSS_ENDPOINT }}
-        run: |
-          ossutil config -e $OSS_ENDPOINT -i $OSS_ACCESS_KEY_ID -k $OSS_ACCESS_KEY_SECRET
-          ossutil cp release/*.dmg oss://colin-accounting/releases/mac/ --acl public-read
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

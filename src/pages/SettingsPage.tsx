@@ -4,7 +4,7 @@ import {
   Card, Tabs, Table, Button, Modal, Form, Input, Select, InputNumber,
   Popconfirm, Tag, Space, App, ColorPicker, Badge, message as antMessage,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, DownloadOutlined, CrownOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, DownloadOutlined, CrownOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAuthStore } from '@/stores/authStore';
@@ -46,12 +46,14 @@ export default function SettingsPage() {
           { key: 'categories', label: '分类管理' },
           { key: 'accounts', label: '账户管理' },
           { key: 'export', label: '数据导出' },
+          { key: 'about', label: '关于' },
         ]}
       />
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {activeTab === 'categories' && <CategorySettings />}
         {activeTab === 'accounts' && <AccountSettings />}
         {activeTab === 'export' && <ExportSettings />}
+        {activeTab === 'about' && <AboutSettings />}
       </div>
     </div>
   );
@@ -347,6 +349,94 @@ function ExportSettings() {
   );
 }
 
+// ==================== 关于 ====================
+function AboutSettings() {
+  const [version, setVersion] = useState('1.0.0');
+  const [checking, setChecking] = useState(false);
+  const { message } = App.useApp();
+  const api = window.electronAPI;
+
+  useEffect(() => {
+    if (api) {
+      api.getVersion().then((v) => setVersion(v || '1.0.0')).catch(() => {});
+    }
+  }, [api]);
+
+  const handleCheckUpdate = async () => {
+    if (!api) {
+      message.info('当前为网页版，请使用桌面端检查更新');
+      return;
+    }
+    setChecking(true);
+    try {
+      // 通过挂载在 window 上的函数触发 UpdateNotification 的检查逻辑
+      const checkFn = (window as any).__checkForUpdates;
+      if (checkFn) {
+        await checkFn();
+      } else {
+        const result = await api.checkForUpdates();
+        if (result && (result as any).dev) {
+          message.info('开发模式，跳过更新检查');
+        } else if (result && (result as any).result === 'no-update') {
+          message.success('当前已是最新版本');
+        }
+      }
+    } catch {
+      message.error('检查更新失败');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <Card title="关于 Colin记账">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '24px 0' }}>
+        {/* 应用图标 */}
+        <div
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: 20,
+            background: 'linear-gradient(135deg, #FFD93D, #FFA623)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 36,
+            fontWeight: 700,
+            color: '#fff',
+            boxShadow: '0 4px 12px rgba(255, 217, 61, 0.4)',
+          }}
+        >
+          C
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Colin记账</h2>
+          <p style={{ color: '#666', fontSize: 13, margin: '4px 0 0' }}>
+            数据自控 + 极简无广告的个人记账
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: '#999', fontSize: 13 }}>版本 {version}</span>
+          {api && (
+            <Button
+              size="small"
+              type="primary"
+              icon={<ReloadOutlined />}
+              loading={checking}
+              onClick={handleCheckUpdate}
+            >
+              检查更新
+            </Button>
+          )}
+        </div>
+        {!api && (
+          <p style={{ color: '#999', fontSize: 12 }}>网页版（PWA），通过浏览器更新</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 // ============================================================
 // 移动端个人中心（"我的"）
 // ============================================================
@@ -363,6 +453,17 @@ function MobileProfileView() {
   const [activeView, setActiveView] = useState<'menu' | 'categories' | 'accounts' | 'export' | 'accountInfo'>('menu');
   const [uniqueDays, setUniqueDays] = useState(0);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
+  const [appVersion, setAppVersion] = useState('1.0.0');
+  const [updateChecking, setUpdateChecking] = useState(false);
+  const api = window.electronAPI;
+
+  // 获取版本号
+  useEffect(() => {
+    if (api) {
+      api.getVersion().then((v) => setAppVersion(v || '1.0.0')).catch(() => {});
+    }
+  }, [api]);
 
   // 统计天数
   useEffect(() => {
@@ -533,11 +634,72 @@ function MobileProfileView() {
         <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', marginTop: 12 }}>
           <MobileMenuItem
             label="关于Colin记账"
-            subtitle="V1.0.0"
-            onClick={() => {}}
+            subtitle={`V${appVersion}`}
+            onClick={() => setShowAboutModal(true)}
             last
           />
         </div>
+
+        {/* 关于弹窗 */}
+        <Modal
+          title="关于 Colin记账"
+          open={showAboutModal}
+          onCancel={() => setShowAboutModal(false)}
+          footer={null}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '16px 0' }}>
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 16,
+                background: 'linear-gradient(135deg, #FFD93D, #FFA623)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 28,
+                fontWeight: 700,
+                color: '#fff',
+              }}
+            >
+              C
+            </div>
+            <h3 style={{ margin: 0 }}>Colin记账 V{appVersion}</h3>
+            <p style={{ color: '#666', fontSize: 13, textAlign: 'center', margin: 0 }}>
+              数据自控 + 极简无广告<br />AI 对话式财务助手
+            </p>
+            {api ? (
+              <Button
+                type="primary"
+                icon={<ReloadOutlined />}
+                loading={updateChecking}
+                onClick={async () => {
+                  setUpdateChecking(true);
+                  try {
+                    const result = await api.checkForUpdates();
+                    if (result && (result as any).dev) {
+                      antMessage.info('开发模式，跳过更新检查');
+                    } else if (result && (result as any).result === 'no-update') {
+                      antMessage.success('当前已是最新版本');
+                    }
+                  } catch {
+                    antMessage.error('检查更新失败');
+                  } finally {
+                    setUpdateChecking(false);
+                  }
+                }}
+                style={{ marginTop: 8 }}
+              >
+                检查更新
+              </Button>
+            ) : (
+              <span style={{ color: '#999', fontSize: 12 }}>网页版（PWA）</span>
+            )}
+            <span style={{ color: '#bbb', fontSize: 11 }}>
+              © 2026 Colin
+            </span>
+          </div>
+        </Modal>
       </div>
 
       {/* 修改密码弹窗 */}

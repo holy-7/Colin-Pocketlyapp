@@ -19,22 +19,12 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: 'logo.svg',
-            sizes: '192x192',
-            type: 'image/svg+xml',
-          },
-          {
-            src: 'logo.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml',
-          },
-          {
-            src: 'logo.png',
+            src: 'logo-app.png',
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: 'logo.png',
+            src: 'logo-app.png',
             sizes: '512x512',
             type: 'image/png',
           },
