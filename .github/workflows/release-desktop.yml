@@ -70,29 +70,16 @@ jobs:
         run: npx tsc -p tsconfig.electron.json
 
       - name: Package macOS App
-        run: |
-          npx electron-builder --mac --publish=never 2>&1 | tee build-mac.log
-          exit ${PIPESTATUS[0]}
+        run: npx electron-builder --mac --publish=never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          CSC_LINK: ''
-          CSC_KEY_PASSWORD: ''
-
-      - name: Upload macOS build log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-build-log-${{ github.run_id }}
-          path: build-mac.log
-          retention-days: 1
 
       - name: Create ZIP archive
         run: |
           cd release
           ls -la
-          zip -r "Colin记账-mac-arm64-${{ github.ref_name }}.zip" . -i '*.dmg' -i '*.blockmap' -i 'latest-mac.yml'
+          zip "Colin记账-mac-arm64-${{ github.ref_name }}.zip" *.dmg *.blockmap latest-mac.yml
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
