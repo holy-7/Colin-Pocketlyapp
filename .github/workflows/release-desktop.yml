@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: 22
 
-      - run: npm ci
+      - run: npm install
 
       - name: Build Desktop App (Windows)
         run: npm run package:win
@@ -55,7 +55,7 @@ jobs:
         with:
           node-version: 22
 
-      - run: npm ci
+      - run: npm install
 
       - name: Build Desktop App (macOS)
         run: npm run package:mac
