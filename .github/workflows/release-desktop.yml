@@ -7,12 +7,14 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - run: npm ci
 
@@ -24,23 +26,27 @@ jobs:
           VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
           VITE_AI_API_BASE_URL: ${{ secrets.VITE_AI_API_BASE_URL }}
 
-      - name: Upload artifacts for release
-        uses: actions/upload-artifact@v4
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
         with:
-          name: windows-installer
-          path: |
+          files: |
             release/*.exe
             release/*.blockmap
             release/latest.yml
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-macos:
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - run: npm ci
 
@@ -52,37 +58,12 @@ jobs:
           VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
           VITE_AI_API_BASE_URL: ${{ secrets.VITE_AI_API_BASE_URL }}
 
-      - name: Upload artifacts for release
-        uses: actions/upload-artifact@v4
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
         with:
-          name: macos-installer
-          path: |
+          files: |
             release/*.dmg
             release/*.blockmap
             release/latest-mac.yml
-
-  release:
-    needs: [build-windows, build-macos]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-installer
-          path: release
-
-      - name: Download macOS artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-installer
-          path: release
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
-        with:
-          files: release/*
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
