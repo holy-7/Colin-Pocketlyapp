@@ -94,11 +94,14 @@ function buildEmail(email_data: EmailPayload["email_data"]) {
         subject: "Colin记账 - 重置密码",
         html: `<div style="max-width:480px;margin:0 auto;padding:32px;font-family:Arial,sans-serif">
           <h2 style="color:#333;margin-bottom:16px">重置你的密码</h2>
-          <p style="color:#666;font-size:15px">点击下方按钮设置新密码：</p>
+          <p style="color:#666;font-size:15px">点击下方按钮，你的密码将被重置为初始密码：</p>
+          <div style="background:#FFF8E1;border-radius:8px;padding:16px;text-align:center;margin:16px 0">
+            <span style="font-size:28px;font-weight:bold;letter-spacing:4px;color:#333">123456789</span>
+          </div>
           <div style="text-align:center;margin:24px 0">
             <a href="${safeLink}" style="display:inline-block;background:#FFD93D;color:#333;padding:12px 32px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold">重置密码</a>
           </div>
-          <p style="color:#999;font-size:13px">如果你没有请求重置密码，请忽略此邮件。</p>
+          <p style="color:#999;font-size:13px">登录后请尽快修改密码。如果你没有请求重置密码，请忽略此邮件。</p>
         </div>`,
       };
 
