@@ -58,13 +58,20 @@ jobs:
 
       - run: npm install
 
-      - name: Build Desktop App (macOS)
-        run: npm run package:mac
+      - name: Build Vite (macOS)
+        run: npx vite build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
           VITE_AI_API_BASE_URL: ${{ secrets.VITE_AI_API_BASE_URL }}
+
+      - name: Build Electron TS (macOS)
+        run: npx tsc -p tsconfig.electron.json
+
+      - name: Package macOS App
+        run: npx electron-builder --mac --publish=never
+        env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEBUG: electron-builder
 
