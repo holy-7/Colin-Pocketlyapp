@@ -70,11 +70,30 @@ jobs:
         run: npx tsc -p tsconfig.electron.json
 
       - name: Package macOS App
-        run: npx electron-builder --mac --publish=never
+        id: package_mac
+        run: |
+          npx electron-builder --mac --publish=never 2>&1 | tee build-mac.log
+          echo "EXIT_CODE=$?" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEBUG: electron-builder
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        continue-on-error: true
+
+      - name: Upload macOS build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build-log
+          path: build-mac.log
+          retention-days: 3
+
+      - name: Check macOS package result
+        if: steps.package_mac.outcome == 'failure'
+        run: |
+          echo "macOS build failed. Check the uploaded artifact for details."
+          exit 1
 
       - name: Create ZIP archive
         run: |
