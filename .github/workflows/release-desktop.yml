@@ -26,6 +26,12 @@ jobs:
           VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
           VITE_AI_API_BASE_URL: ${{ secrets.VITE_AI_API_BASE_URL }}
 
+      - name: Create ZIP archive
+        run: |
+          $tag = '${{ github.ref_name }}'
+          Compress-Archive -Path release/*.exe, release/*.blockmap, release/latest.yml -DestinationPath "release/Colin记账-win-x64-$tag.zip"
+        shell: pwsh
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
         with:
@@ -33,6 +39,7 @@ jobs:
             release/*.exe
             release/*.blockmap
             release/latest.yml
+            release/*.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -58,6 +65,11 @@ jobs:
           VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
           VITE_AI_API_BASE_URL: ${{ secrets.VITE_AI_API_BASE_URL }}
 
+      - name: Create ZIP archive
+        run: |
+          cd release
+          zip -r "Colin记账-mac-arm64-${{ github.ref_name }}.zip" *.dmg *.blockmap latest-mac.yml
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
         with:
@@ -65,5 +77,6 @@ jobs:
             release/*.dmg
             release/*.blockmap
             release/latest-mac.yml
+            release/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
