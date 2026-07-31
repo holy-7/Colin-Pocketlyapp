@@ -77,6 +77,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          CSC_LINK: ''
+          CSC_KEY_PASSWORD: ''
 
       - name: Upload macOS build log
         if: failure()
