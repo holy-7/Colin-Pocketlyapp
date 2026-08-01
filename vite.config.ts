@@ -31,6 +31,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // 新 SW 立即激活并接管所有页面，确保用户始终获取最新版本
+        skipWaiting: true,
+        clientsClaim: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
