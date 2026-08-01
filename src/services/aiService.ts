@@ -7,6 +7,9 @@
  * 3. 处理 function calling → 执行本地工具 → 返回结果
  * 4. 流式响应转文本消息
  * 5. 预算控制（最大轮数、Token 限制）
+ *
+ * 注意：API endpoint 和 key 通过 VITE_ 环境变量在构建时注入，
+ * 确保 GitHub Secrets 中 VITE_AI_API_BASE_URL 已正确配置。
  */
 
 import OpenAI from 'openai';
