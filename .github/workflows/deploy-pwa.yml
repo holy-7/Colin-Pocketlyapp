@@ -27,7 +27,7 @@ jobs:
           VITE_AI_API_BASE_URL: ${{ secrets.VITE_AI_API_BASE_URL }}
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@9681c2997648301493e78cacbfb790a9f19c833f  # v3.9.0
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
